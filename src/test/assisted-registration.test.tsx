@@ -43,5 +43,5 @@ it('shows the action only with the specific permission and displays protected so
  render(<ApplicationScreens/>);expect(screen.getByText('Assist an applicant')).toBeInTheDocument();
  fireEvent.click(await screen.findByRole('button',{name:'View application for Assisted Synthetic'}));
  await screen.findByText('Staff-assisted');expect(screen.getByText(authorization.wording)).toBeInTheDocument();
- expect(screen.getByText('Staff identity: synthetic-staff@example.test')).toBeInTheDocument();
+ expect(screen.getByText('Actor identity: synthetic-staff@example.test')).toBeInTheDocument();
 });

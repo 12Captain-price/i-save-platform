@@ -24,6 +24,7 @@ class Settings(BaseSettings):
 
     secret_key: str = "dev-secret-change-me"
     access_token_expire_minutes: int = Field(default=30, ge=1, le=1440)
+    password_setup_expire_minutes: int = Field(default=60,ge=5,le=1440)
 
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 

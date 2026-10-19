@@ -94,7 +94,7 @@ test('invalid login errors, unsupported account pages and login CSRF refusal', a
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveText('Incorrect email or password.');
   expect((await request.post('/api/auth/login', { data: { email: 'browser-admin@example.test', password }, headers: { Origin: 'https://attacker.test', 'X-Isave-Request': '1' } })).status()).toBe(403);
-  for (const path of ['/recovery','/verify','/setup-password']) {
+  for (const path of ['/recovery','/verify']) {
     await page.goto(path, { waitUntil: 'domcontentloaded' });
     await expect(page.getByText('This service is not available online yet.')).toBeVisible();
     await expect(page.locator('form')).toHaveCount(0);
@@ -209,7 +209,8 @@ test('public pending registration and authorised Staff/Admin review without acti
   await expect(page.getByText('Recorded information version: savings-interest-v1')).toBeVisible();
   await expect(page.getByText('Education',{exact:true})).toBeVisible();
   await expect(page.getByText('Public application submitted; awaiting office review.')).toBeVisible();
-  await expect(page.getByRole('button',{name:/approve|activate|confirm payment/i})).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Approve membership',exact:true})).toBeDisabled();
+  await expect(page.getByRole('checkbox')).toBeDisabled();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
   await page.screenshot({path:`test-results/${role}-application-review-mobile.png`});
   await page.setViewportSize({width:1280,height:900});

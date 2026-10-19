@@ -20,6 +20,8 @@ RESOURCES = ("members", "applications", "contributions", "fees", "subscriptions"
 PERMISSIONS = {f"{r}:{action}" for r in RESOURCES for action in ("read", "write")}
 PERMISSIONS.discard("audit:write")
 PERMISSIONS.add("applications:assist")
+from app.membership_policy import CAPABILITIES
+PERMISSIONS |= CAPABILITIES
 PERMISSIONS |= {"members:own", "applications:own", "contributions:own", "fees:own", "subscriptions:own"}
 SECURITY_PERMISSIONS = {"users:write", "roles:write"}
 TEMPLATES = {
@@ -82,6 +84,9 @@ def permissions(db, user):
         codes -= SECURITY_PERMISSIONS
     if not user.role or user.role.name not in {"staff", "administrator"}:
         codes.discard("applications:assist")
+        codes -= {'membership:approve','membership:activate','invitations:issue'}
+    if not user.role or user.role.name not in {'staff','finance','administrator'}:
+        codes -= {'registration-fees:record','registration-fees:verify'}
     return codes & PERMISSIONS
 
 

@@ -10,6 +10,14 @@ const post = { method: 'POST', headers: { origin: 'http://localhost:3000', 'X-Is
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Server authentication boundary', () => {
+  it('limits membership bridges to fixed paths and rejects CSRF, query ownership and missing sessions',async()=>{
+    const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
+    expect((await handleAuthentication(request('/api/membership/fees')))?.status).toBe(401);
+    expect((await handleAuthentication(request('/api/membership/fees?member_id=2',{headers:{cookie:`isave_session=${token}`}})))?.status).toBe(404);
+    expect((await handleAuthentication(request('/api/membership/applications/1/approve',{method:'POST',headers:{cookie:`isave_session=${token}`},body:'{}'})))?.status).toBe(403);
+    expect((await handleAuthentication(request('/api/membership/unknown',{headers:{cookie:`isave_session=${token}`}})))?.status).toBe(404);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
   it.each(['member', 'staff', 'finance', 'admin'])('blocks direct anonymous %s URLs before SSR', async role => {
     const response = await handleAuthentication(request(`/portal/${role}/dashboard`));
     expect(response?.status).toBe(302);

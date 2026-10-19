@@ -46,7 +46,7 @@ def create_legacy_schema(database):
 
     original = MetaData()
     for table in Base.metadata.sorted_tables:
-        if table.name in {"auth_sessions", "user_permissions", "login_throttles", "registration_submissions", "application_events", "savings_interests", "application_submissions"}:
+        if table.name in {"auth_sessions", "user_permissions", "login_throttles", "registration_submissions", "application_events", "savings_interests", "application_submissions", "application_registration_payments", "membership_approvals", "password_setup_invitations"}:
             continue
         table.to_metadata(original)
     for name in ("created_at", "updated_at"):
@@ -59,6 +59,8 @@ def test_fresh_upgrade_repeat_and_constraints(migration_database):
     upgrade(database)
     upgrade(database)
     require_current_schema(database)
+
+
     assert set(inspect(database).get_table_names()) == set(Base.metadata.tables) | {"alembic_version"}
     with database.connect() as connection:
         assert schema_differences(connection) == []
@@ -346,3 +348,73 @@ def test_assisted_migration_preserves_rows_and_only_grants_administrator(migrati
     with pytest.raises(RuntimeError,match='provenance is retained'),database.connect() as c:
         command.downgrade(migration_config(c),'0005_savings_interest')
     require_current_schema(database)
+
+
+def test_concurrent_membership_workflow_posts_one_fee_approval_and_activation(migration_database):
+    from concurrent.futures import ThreadPoolExecutor
+    from sqlalchemy.orm import Session
+    from app.bootstrap import bootstrap
+    from app.models.application import MembershipApplication
+    from app.models.membership import ApplicationRegistrationPayment,MembershipApproval
+    from app.models.user import User
+    from app.models.subscription import Subscription
+    from app.models.contribution import Contribution
+    from app.models.audit_event import AuditEvent
+    from app.schemas.membership import PaymentRecord
+    from app.services import membership
+    database=migration_database
+    upgrade(database)
+    with Session(database) as db:
+        bootstrap(db,'race-admin@example.test','Synthetic-only-race-123!')
+        actor_id=db.query(User).filter_by(email='race-admin@example.test').one().id
+        a=MembershipApplication(application_number='RACE-MEMBERSHIP',first_name='Concurrent',last_name='Synthetic',email='race-member@example.test',status='Pending')
+        db.add(a);db.commit();app_id=a.id
+    def perform(action):
+        with Session(database) as db:
+            actor=db.get(User,actor_id)
+            if action=='record':membership.record_payment(db,actor,app_id,PaymentRecord(amount='20',currency='USD',payment_date='2026-01-01',reference='RACE-RECEIPT'))
+            else:getattr(membership,action)(db,actor,app_id)
+            db.commit()
+    for action in ['record','verify_payment','approve','activate']:
+        with ThreadPoolExecutor(max_workers=4) as executor:list(executor.map(lambda _:perform(action),range(4)))
+    with Session(database) as db:
+        assert db.query(ApplicationRegistrationPayment).count()==1
+        assert db.query(MembershipApproval).count()==1
+        assert db.query(Subscription).count()==1
+        assert db.query(Contribution).count()==0
+        for action in ['registration_fee_recorded','registration_fee_verified','membership_approved','account_activated']:
+            assert db.query(AuditEvent).filter_by(action=action).count()==1
+        from uuid import uuid4
+        token,_=membership.create_invitation(db,db.get(User,actor_id),app_id,uuid4());db.commit()
+    def consume(_):
+        from app.exceptions import APIError
+        with Session(database) as db:
+            try:
+                membership.consume_invitation(db,token,'Synthetic-only-setup-123!');db.commit();return 'consumed'
+            except APIError as error:
+                db.rollback();assert error.status_code==400;return 'denied'
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        assert sorted(executor.map(consume,range(2)))==['consumed','denied']
+
+
+def test_membership_migration_preserves_original_rows_and_limits_grants(migration_database):
+    from alembic import command
+    from app.migrations import migration_config
+    from app.membership_policy import CAPABILITIES
+    database=migration_database
+    with database.connect() as c:command.upgrade(migration_config(c),'0006_assisted_registration')
+    with database.begin() as c:
+        c.execute(text("INSERT INTO roles(name) VALUES ('administrator'),('staff'),('finance'),('member')"))
+        c.execute(text("INSERT INTO permissions(code) VALUES ('historical:read')"))
+        c.execute(text("INSERT INTO role_permissions(role_id,permission_id) SELECT r.id,p.id FROM roles r CROSS JOIN permissions p WHERE p.code='historical:read'"))
+        c.execute(text("INSERT INTO membership_applications(application_number,first_name,last_name,email,status) VALUES ('PRE-0007','Legacy','Synthetic','legacy7@example.test','Pending')"))
+        before=c.execute(text('SELECT * FROM membership_applications')).all()
+        grants=c.execute(text('SELECT * FROM role_permissions')).all()
+    upgrade(database);upgrade(database);require_current_schema(database)
+    with database.connect() as c:
+        assert c.execute(text('SELECT * FROM membership_applications')).all()==before
+        assert set(grants).issubset(set(c.execute(text('SELECT * FROM role_permissions')).all()))
+        for code in CAPABILITIES:
+            assert c.execute(text('SELECT r.name FROM roles r JOIN role_permissions rp ON r.id=rp.role_id JOIN permissions p ON p.id=rp.permission_id WHERE p.code=:code'),{'code':code}).scalars().all()==['administrator']
+        for name in ['application_registration_payments','membership_approvals','password_setup_invitations']:
+            assert c.execute(text(f'SELECT count(*) FROM {name}')).scalar()==0

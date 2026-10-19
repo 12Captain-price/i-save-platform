@@ -49,6 +49,11 @@ def update_user(db, actor, user_id, body):
     if not target:
         raise not_found("User not found")
     data = body.model_dump(exclude_unset=True)
+    from app.models.membership import MembershipApproval
+    managed = db.query(MembershipApproval).filter_by(user_id=user_id).first()
+    if managed and any(k in data and data[k] != getattr(target, k) for k in ('email', 'role_id', 'is_active')):
+        if set(data) != {'is_active'} or data['is_active'] is not False:
+            raise conflict('Workflow-managed accounts require the audited membership workflow; account changes require reconciliation')
     if any(data[k] is None for k in ("email", "is_active") if k in data):
         raise APIError(400, "bad_request", "Email and active status cannot be null")
     if "role_id" in data and data["role_id"] is not None and not db.get(Role, data["role_id"]):

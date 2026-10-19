@@ -68,12 +68,42 @@ async function identity(token: string): Promise<Identity | null> {
     workspace: isWorkspace(data.workspace) ? data.workspace : null, permissions: data.permissions };
 }
 
+async function membership(request: Request, url: URL) {
+  const match = url.pathname.match(/^\/api\/membership\/applications\/([1-9][0-9]{0,9})(?:\/(payment|verify|approve|activate|invitation))?$/);
+  const fees = url.pathname === '/api/membership/fees';
+  if ((!match && !fees) || url.search) return message('Not found.',404);
+  const action = match?.[2];
+  if (request.method !== (action ? 'POST' : 'GET')) return message('Method not allowed.',405);
+  const token = tokenFrom(request);
+  if (!token) return expired(request);
+  let body: string | undefined;
+  if (action) {
+    if (request.headers.get('origin') !== url.origin || request.headers.get('x-isave-request') !== '1') return message('Reload and try again.',403);
+    if (!request.headers.get('content-type')?.startsWith('application/json')) return message('Check the entered details.',400);
+    body = await request.text();
+    if (body.length > 4096) return message('Check the entered details.',400);
+    try { JSON.parse(body); } catch { return message('Check the entered details.',400); }
+  }
+  const response = await fetch(new URL(`/api/v1/membership/${fees ? 'fees' : `applications/${match![1]}${action ? `/${action}` : ''}`}`,process.env['AUTH_API_ORIGIN'] ?? 'http://127.0.0.1:8000'),{
+    method:request.method,headers:{Authorization:`Bearer ${token}`,...(action?{'Content-Type':'application/json'}:{})},...(body!==undefined?{body}:{}),
+    cache:'no-store',redirect:'error',signal:AbortSignal.timeout(10_000),
+  });
+  if (response.status === 401) return expired(request);
+  if (!response.ok) return message(response.status===403?'Your account does not have permission for this action.':
+    response.status===409?'The prerequisites are not satisfied or a conflicting record exists. Refresh before retrying.':
+    response.status===422 || response.status===400?'Check the entered details and acknowledgement.':
+    response.status===429?'Too many attempts. Please try again later.':'Unable to complete this action. Refresh to check its status before retrying.',
+    [400,403,409,422,429].includes(response.status)?response.status:503);
+  return Response.json(await response.json(),{headers});
+}
+
 // The sole browser authentication boundary. Only explicitly listed authentication and read paths are proxied.
 export async function handleAuthentication(request: Request): Promise<Response | null> {
   const url = new URL(request.url);
   const path = url.pathname;
-  if (path !== '/api/registration' && path !== '/api/registration/assisted' && !path.startsWith('/api/review/') && !path.startsWith('/api/auth/') && !path.startsWith('/api/admin/') && !/^\/portal(?:\/|$)/.test(path)) return null;
+  if (path !== '/api/registration' && path !== '/api/registration/assisted' && !path.startsWith('/api/membership/') && !path.startsWith('/api/review/') && !path.startsWith('/api/auth/') && !path.startsWith('/api/admin/') && !/^\/portal(?:\/|$)/.test(path)) return null;
   try {
+    if (path.startsWith('/api/membership/')) return await membership(request,url);
     if (path === '/api/registration' || path === '/api/registration/assisted') {
       const assisted = path === '/api/registration/assisted';
       const token = assisted ? tokenFrom(request) : null;
@@ -99,10 +129,20 @@ export async function handleAuthentication(request: Request): Promise<Response |
     if (path.startsWith('/api/admin/') || path.startsWith('/api/review/')) return await adminRead(request, url);
     if (path.startsWith('/api/auth/')) {
       const action = path.slice('/api/auth/'.length);
-      if (!['login', 'me', 'logout'].includes(action)) return message('Not found.', 404);
+      if (!['login', 'me', 'logout', 'setup-password'].includes(action)) return message('Not found.', 404);
       if (request.method !== (action === 'me' ? 'GET' : 'POST')) return message('Method not allowed.', 405);
       if (request.method === 'POST' && (request.headers.get('origin') !== url.origin ||
           request.headers.get('x-isave-request') !== '1')) return message('Request could not be verified. Reload and try again.', 403);
+      if (action === 'setup-password') {
+        if (!request.headers.get('content-type')?.startsWith('application/json')) return message('Check your password and setup link.',400);
+        const body = await request.text();
+        if (body.length > 4096) return message('Check your password and setup link.',400);
+        let input: unknown;
+        try { input = JSON.parse(body); } catch { return message('Check your password and setup link.',400); }
+        const response = await upstream('setup-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});
+        if (response.status===204) return new Response(null,{status:204,headers});
+        return message(response.status===400?'Check your password (12 to 72 characters, at most 72 UTF-8 bytes). If the setup link is invalid or expired, contact the office.':response.status===429?'Too many attempts. Please try again later.':'Password setup could not be confirmed. Retry or contact the office.',[400,429].includes(response.status)?response.status:503);
+      }
       if (action === 'login') {
         if (!request.headers.get('content-type')?.startsWith('application/json')) return message('Enter your email and password.', 400);
         const body = await request.text();

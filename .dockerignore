@@ -41,5 +41,6 @@ backend/**
 backend/app/**
 !backend/app/registration_options.json
 !backend/app/assisted_authorization.json
+!backend/app/membership_policy.json
 test-results/
 playwright-report/

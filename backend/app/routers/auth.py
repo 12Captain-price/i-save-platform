@@ -16,6 +16,21 @@ from app.security.hashing import hash_password, verify_password
 router = APIRouter(prefix="/api/v1/auth", tags=["authentication"])
 
 
+from app.schemas.membership import PasswordSetup
+
+
+@router.post('/setup-password',status_code=204)
+def setup_password(body:PasswordSetup,request:Request,db:Session=Depends(get_db)):
+    from app.config import get_settings
+    from app.exceptions import APIError
+    from app.services.membership import consume_invitation
+    if get_settings().app_env.lower()=='production' and request.url.scheme!='https':raise APIError(400,'https_required','HTTPS is required')
+    throttle(db,digest('password-setup-ip:'+(request.client.host if request.client else 'unknown')))
+    throttle(db,digest('password-setup-token:'+body.token))
+    consume_invitation(db,body.token,body.password);db.commit()
+    return Response(status_code=204,headers={'Cache-Control':'no-store'})
+
+
 class Login(BaseModel):
     model_config = ConfigDict(extra="forbid")
     email: Email

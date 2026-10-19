@@ -5,6 +5,7 @@ fully populated whenever the package is imported (needed by Alembic and by
 ``Base.metadata.create_all``).
 """
 import app.models.application
+import app.models.membership
 import app.models.auth
 import app.models.audit_event
 import app.models.consent_record

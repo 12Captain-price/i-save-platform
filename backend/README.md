@@ -1,5 +1,9 @@
 # i-Save Backend (Phase 1: Foundation)
 
+The [fee-gated membership workflow](../docs/membership-activation.md) documents
+the agreed US$20 fee gate, separate permissions/actions, activation, next-month
+subscription and single-use setup invitations. Email delivery remains unavailable.
+
 Python + FastAPI backend targeting PostgreSQL, with SQLAlchemy ORM and Alembic
 migrations. The React/TanStack Start frontend preserves its design and connects
 login/logout through a same-origin authentication bridge.

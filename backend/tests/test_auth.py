@@ -70,7 +70,7 @@ def private_routes():
         for method in operations:
             if not path.startswith("/api/v1/") or path == "/api/v1/auth/login":
                 continue
-            if path == "/api/v1/registration":
+            if path in {"/api/v1/registration", "/api/v1/auth/setup-password"}:
                 continue
             if method == "get" and path.startswith("/api/v1/plans"):
                 continue

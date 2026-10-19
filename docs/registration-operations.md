@@ -1,5 +1,10 @@
 # Pending public registration — 19 October 2026
 
+The subsequent [fee-gated membership workflow](membership-activation.md) implements
+the agreed recording, verification, approval and activation actions. Earlier
+read-only/disabled-policy statements below describe the original milestone.
+Public submission still creates only a pending application.
+
 Staff-assisted submission and its separate permission, consent/provenance and
 local activation are documented in [assisted registration](assisted-registration.md).
 

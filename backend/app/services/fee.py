@@ -11,6 +11,13 @@ from app.schemas.fee import FeeCreate, FeeUpdate
 
 
 def create_fee(db: Session, fee_in: FeeCreate) -> RegistrationFee:
+    from app.services.membership import reference_lock
+    from app.models.membership import ApplicationRegistrationPayment
+    from app.security.auth import digest
+    from sqlalchemy import func
+    reference_lock(db,fee_in.fee_reference)
+    if db.query(ApplicationRegistrationPayment).filter_by(reference_key=digest(fee_in.fee_reference.strip().lower())).first():
+        raise conflict('Receipt/reference is already recorded')
     member = db.query(Member).filter(Member.id == fee_in.member_id).first()
     if not member:
         raise not_found("Member not found", {"member_id": fee_in.member_id})

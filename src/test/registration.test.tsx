@@ -33,10 +33,11 @@ it('shows empty and denied application lists without sample applicants',async()=
 });
 it('renders populated detail and actual recorded history without approval actions',async()=>{
  const record={id:7,application_number:'SYNTHETIC-7',first_name:'Test',last_name:'Applicant',email:'test@example.test',status:'Pending',submitted_at:'2026-10-19T12:00:00Z',history:[{id:1,status:'Pending',note:'Public application submitted.',actor_user_id:null,recorded_at:'2026-10-19T12:00:00Z'}]};
- vi.stubGlobal('fetch',vi.fn().mockImplementation(async(url:string)=>Response.json(url.endsWith('/7')?record:{items:[record],total:1})));
+ vi.stubGlobal('fetch',vi.fn().mockImplementation(async(url:string)=>Response.json(url.startsWith('/api/membership/')?{payment:null,approval:null,approval_blockers:['Registration fee must be verified as US$20.'],can_approve:false,can_verify:false,acknowledgement:{acknowledgement:'Review requires verified fee',acknowledgement_version:'test'},delivery:{available:false,status:'Not issued'}}:url.endsWith('/7')?record:{items:[record],total:1})));
  render(<ApplicationScreens/>);fireEvent.click(await screen.findByRole('button',{name:'View application for Test Applicant'}));
  await screen.findByText('Status history');await screen.findByText('Public application submitted.');
- expect(screen.queryByRole('button',{name:/approve|activate|payment/i})).not.toBeInTheDocument();
+ expect(screen.getByRole('button',{name:'Approve membership'})).toBeDisabled();
+ expect(screen.queryByRole('button',{name:'Record US$20 payment'})).not.toBeInTheDocument();
  fireEvent.click(screen.getByRole('button',{name:'Back to applications'}));await screen.findByText('1 application recorded');
 });
 it('renders permission denial, not an empty application list',async()=>{

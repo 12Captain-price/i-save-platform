@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { MembershipReview } from './MembershipReview';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Feedback, useRecords } from './AdminDataScreens';
@@ -8,7 +9,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 type Application = {submission?:{source:string;actor_user_id:number|null;actor_email:string|null;applicant_authorized:boolean;authorization_text:string|null;authorization_version:string|null;authorized_at:string|null}|null;savings_interest?:{category_label:string;purpose:string;notice_text:string;notice_version:string;recorded_at:string}|null;id:number; application_number:string; first_name:string; last_name:string; email:string; phone:string|null; address:string|null; reason:string|null; status:string; submitted_at:string; rejection_reason:string|null; history:{id:number;status:string;note:string|null;actor_user_id:number|null;actor_email?:string|null;recorded_at:string}[]};
 type Page = {items:Application[];total:number;skip:number;limit:number};
 const date = (value:string) => new Intl.DateTimeFormat('en-GB', {dateStyle:'medium',timeStyle:'short',timeZone:'UTC'}).format(new Date(value)) + ' UTC';
-const policy = 'Fee verification and membership activation are disabled while approved policy is missing. Viewing an application does not approve it or confirm payment.';
+const policy = 'Viewing an application does not approve membership or confirm payment. Authorised actions require verified payment and a separate review acknowledgement.';
 
 function ApplicationDetails({id,back}:{id:number;back:()=>void}) {
   const result = useRecords<Application>(`/api/review/applications/${id}`);
@@ -20,7 +21,7 @@ function ApplicationDetails({id,back}:{id:number;back:()=>void}) {
       <section className="rounded-xl border border-border bg-card p-5 sm:p-8"><p className="text-sm font-semibold text-primary">{record.status}</p><h2 className="mt-2 break-words text-2xl font-semibold">{record.first_name} {record.last_name}</h2><p className="mt-2 break-all text-xs text-muted-foreground">{record.application_number}</p>
         <dl className="mt-7 grid gap-5 sm:grid-cols-2">{[['Email',record.email],['Phone',record.phone],['Address',record.address],['Submitted',date(record.submitted_at)],['Reason for applying',record.reason],['Recorded rejection reason',record.rejection_reason]].map(([label,value]) => <div key={label}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 whitespace-pre-wrap break-words text-sm">{value || 'Not recorded'}</dd></div>)}</dl>
       </section>
-      <section className="rounded-xl border border-border bg-card p-5 sm:p-8"><h2 className="text-xl font-semibold">Status history</h2>{record.history.length ? <ol className="mt-5 space-y-5">{record.history.map(event => <li key={event.id} className="border-l-2 border-primary/40 pl-4"><h3 className="font-semibold">{event.status}</h3><p className="mt-1 text-xs text-muted-foreground">{date(event.recorded_at)}{event.actor_user_id !== null ? ` · Account ${event.actor_user_id}` : ''}</p>{event.actor_email && <p className="mt-1 break-words text-xs text-muted-foreground">Staff identity: {event.actor_email}</p>}{event.note && <p className="mt-2 whitespace-pre-wrap break-words text-sm text-muted-foreground">{event.note}</p>}</li>)}</ol> : <p className="mt-4 text-sm text-muted-foreground">No recorded history is available. Earlier transitions cannot be inferred.</p>}</section>
+      <MembershipReview id={id} onChange={result.reload}/><section className="rounded-xl border border-border bg-card p-5 sm:p-8"><h2 className="text-xl font-semibold">Status history</h2>{record.history.length ? <ol className="mt-5 space-y-5">{record.history.map(event => <li key={event.id} className="border-l-2 border-primary/40 pl-4"><h3 className="font-semibold">{event.status}</h3><p className="mt-1 text-xs text-muted-foreground">{date(event.recorded_at)}{event.actor_user_id !== null ? ` · Account ${event.actor_user_id}` : ''}</p>{event.actor_email && <p className="mt-1 break-words text-xs text-muted-foreground">Actor identity: {event.actor_email}</p>}{event.note && <p className="mt-2 whitespace-pre-wrap break-words text-sm text-muted-foreground">{event.note}</p>}</li>)}</ol> : <p className="mt-4 text-sm text-muted-foreground">No recorded history is available. Earlier transitions cannot be inferred.</p>}</section>
     </>}
     <p className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm leading-relaxed text-muted-foreground">{policy}</p>
   </div>;
