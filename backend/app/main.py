@@ -1,8 +1,9 @@
 """FastAPI application entry point.
 
 Creates the application, registers middleware, exception handlers and routers,
-and prepares the database schema on startup.
+and checks that database migrations have been applied before serving requests.
 """
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -10,10 +11,11 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import get_settings
-from app.database import Base, engine
+from app.database import engine
+from app.migrations import require_current_schema
 from app.exceptions import APIError, api_error_handler
 
-# Import every model so Base.metadata is fully populated before create_all.
+# Register models for ORM relationships; schema changes belong to Alembic.
 import app.models  # noqa: F401
 from app.routers.applications import router as applications_router
 from app.routers.audit import router as audit_router
@@ -29,7 +31,15 @@ from app.routers.verifications import router as verifications_router
 
 settings = get_settings()
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    require_current_schema(engine)
+    yield
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title=settings.app_name,
     debug=settings.app_debug,
     docs_url="/docs" if settings.app_debug else None,
@@ -77,17 +87,6 @@ async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError) -> JS
             }
         },
     )
-
-
-@app.on_event("startup")
-def on_startup() -> None:
-    """Create all tables defined by the SQLAlchemy models.
-
-    In production/staging this is managed by Alembic migrations; this call is
-    a convenience for local development so the schema exists without running
-    ``alembic upgrade head`` manually.
-    """
-    Base.metadata.create_all(bind=engine)
 
 
 # API routers. Each router carries its own path prefix; health is at /health,

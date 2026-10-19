@@ -54,3 +54,9 @@ docker compose down
 ```
 
 Local development is unchanged: the existing SQLite setup works without Docker.
+
+The backend now applies Alembic migrations before Docker startup. For an existing
+database originally created by API startup without migration history, follow the
+[database stabilisation runbook](docs/database-operations.md) before restarting.
+The [delivery roadmap](docs/delivery-roadmap.md) tracks the remaining work from
+authentication through controlled rollout.

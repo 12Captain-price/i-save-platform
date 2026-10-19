@@ -38,6 +38,11 @@ alembic upgrade head
 This creates all tables defined by the SQLAlchemy models in the configured
 database (local SQLite by default).
 
+For normal setup and Docker startup, prefer `python -m app.migrations upgrade`.
+The API never creates tables automatically. Existing untracked schemas must be
+backed up and explicitly checked before recording migration history; see
+[database operations](../docs/database-operations.md).
+
 ### 4. Start the API
 
 ```powershell
@@ -47,6 +52,7 @@ uvicorn app.main:app --reload
 The API is available at `http://localhost:8000`.
 
 - Health endpoint: `GET /health`
+- Database readiness: `GET /ready` (503 if unavailable or migrations are not current)
 - API documentation (development only): `GET /docs`, `GET /openapi.json`
 - Entity routers are mounted under `/api/v1` (members, users, roles, plans,
   applications, fees, subscriptions, contributions, verifications, audit).
@@ -86,8 +92,9 @@ No withdrawal, interest, bonus, penalty or refund policies are implemented.
 - Secrets live in environment variables (`.env`), never in committed source.
 - Password hashing (bcrypt via passlib) is provided in `app/security/hashing.py`
   and ready for Phase 2 authentication; no server-side auth endpoints exist yet.
-- Frontend-only permission checks are not treated as security; authorisation
-  is enforced on the backend.
+- Entity APIs currently have no authentication or backend permission enforcement.
+  Use synthetic data in local development only until the authentication and
+  permissions milestone is complete; frontend-only checks provide no API security.
 
 ## Migration status
 

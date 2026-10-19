@@ -48,7 +48,7 @@ if config.config_file_name is not None:
 placeholder = "driver://user:pass@localhost/dbname"
 configured_url = config.get_main_option("sqlalchemy.url")
 if not configured_url or configured_url == placeholder:
-    config.set_main_option("sqlalchemy.url", str(settings.database_url))
+    config.set_main_option("sqlalchemy.url", str(settings.database_url).replace("%", "%%"))
 
 target_metadata = Base.metadata
 
@@ -81,6 +81,11 @@ def run_migrations_online() -> None:
     In this scenario we need to create an Engine
     and associate a connection with the context.
     """
+    supplied_connection = config.attributes.get("connection")
+    if supplied_connection is not None:
+        configure_connection(supplied_connection)
+        return
+
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
@@ -88,15 +93,18 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection,
-            target_metadata=target_metadata,
-            compare_type=True,
-            render_as_batch=True,
-        )
+        configure_connection(connection)
 
-        with context.begin_transaction():
-            context.run_migrations()
+
+def configure_connection(connection) -> None:
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        compare_type=True,
+        render_as_batch=True,
+    )
+    with context.begin_transaction():
+        context.run_migrations()
 
 
 if context.is_offline_mode():

@@ -23,7 +23,6 @@ COPY alembic.ini .env.example ./
 
 EXPOSE 8000
 
-# The app creates tables on startup via Base.metadata.create_all() (existing
-# behavior, non-destructive). Migrations for PostgreSQL are applied manually:
-#   docker compose exec backend alembic upgrade head
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Migrate before serving; refuse legacy untracked schemas until explicitly
+# inspected and baselined. Never silently stamp or drop an existing database.
+CMD ["sh", "-c", "python -m app.migrations upgrade && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
