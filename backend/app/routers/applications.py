@@ -9,8 +9,8 @@ from app.database import get_db
 from app.security.auth import resource_access, current_user, scoped_query, check_owned, unconfigured
 from app.models.user import User as Actor
 from app.exceptions import not_found
-from app.models.application import MembershipApplication, ApplicationEvent, SavingsInterest
-from app.schemas.application import ApplicationCreate, ApplicationRead, ApplicationUpdate, ApplicationDetail
+from app.models.application import MembershipApplication, ApplicationEvent, SavingsInterest, ApplicationSubmission
+from app.schemas.application import ApplicationCreate, ApplicationRead, ApplicationUpdate, ApplicationDetail, ApplicationEventRead
 from app.schemas.common import Paginated
 from app.security.auth import require
 from app.services import application as application_service
@@ -58,8 +58,18 @@ def review_application(application_id: Annotated[int, Path(gt=0)], db: Annotated
     if not application:
         raise not_found("Application not found")
     data = ApplicationRead.model_validate(application).model_dump()
+    submission = db.get(ApplicationSubmission, application_id)
+    history = []
+    for event in db.query(ApplicationEvent).filter_by(application_id=application_id).order_by(ApplicationEvent.id):
+        entry = ApplicationEventRead.model_validate(event).model_dump()
+        if submission and submission.source == 'staff_assisted' and event.actor_user_id == submission.actor_user_id:
+            entry['actor_email'] = submission.actor_email
+        elif event.actor_user_id is not None:
+            actor = db.get(Actor, event.actor_user_id)
+            entry['actor_email'] = actor.email if actor else None
+        history.append(entry)
     return {**data, "submitted_at":application.submitted_at, "rejection_reason":application.rejection_reason,
-        "history":db.query(ApplicationEvent).filter_by(application_id=application_id).order_by(ApplicationEvent.id).all(),
+        "history":history, "submission":submission,
         "savings_interest":db.query(SavingsInterest).filter_by(application_id=application_id).one_or_none()}
 
 

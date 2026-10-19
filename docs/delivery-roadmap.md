@@ -57,6 +57,8 @@ stabilisation milestone. No production deployment or paid services are requested
    before rollout; see [authentication operations](authentication-operations.md).
 4. Pending public applications and permission-protected Staff/Admin review are
    implemented; see [registration operations](registration-operations.md).
+   [Staff-assisted registration](assisted-registration.md) reuses that pending
+   workflow with explicit applicant authorisation and session-derived provenance.
    Duplicate submissions receive a uniform public acknowledgement. No account,
    active membership or payment is created. Approved identity, fee verification
    and activation policy is still required before enabling those workflows.

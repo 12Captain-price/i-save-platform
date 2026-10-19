@@ -1,7 +1,7 @@
 """Membership application model: submitted, reviewed and decided by staff."""
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, func, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base, TimestampMixin
@@ -71,4 +71,18 @@ class SavingsInterest(Base):
     purpose: Mapped[str] = mapped_column(Text)
     notice_version: Mapped[str] = mapped_column(String(80))
     notice_text: Mapped[str] = mapped_column(Text)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ApplicationSubmission(Base):
+    """Provenance/authorisation snapshot, separate from review and plan interest."""
+    __tablename__ = "application_submissions"
+    application_id: Mapped[int] = mapped_column(ForeignKey("membership_applications.id", ondelete="CASCADE"), primary_key=True)
+    source: Mapped[str] = mapped_column(String(30))
+    actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    actor_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    applicant_authorized: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    authorization_version: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    authorization_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    authorized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

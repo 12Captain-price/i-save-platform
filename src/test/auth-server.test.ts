@@ -107,3 +107,20 @@ it('uses the authenticated backend for protected application detail reads',async
  expect(new URL(fetcher.mock.calls[0]![0]).pathname).toBe('/api/v1/applications/review/12');
  expect(fetcher.mock.calls[0]![1].headers.Authorization).toBe(`Bearer ${token}`);
 });
+
+it('requires session and CSRF for assisted submission and forwards the cookie bearer, not caller headers',async()=>{
+ const fetcher=vi.fn().mockResolvedValue(new Response(null,{status:202}));vi.stubGlobal('fetch',fetcher);
+ expect((await handleAuthentication(request('/api/registration/assisted',post)))?.status).toBe(401);
+ expect(fetcher).not.toHaveBeenCalled();
+ expect((await handleAuthentication(request('/api/registration/assisted',{...post,headers:{...post.headers,cookie:`isave_session=${token}`,origin:'https://attacker.test'}})))?.status).toBe(403);
+ expect(fetcher).not.toHaveBeenCalled();
+ const response=await handleAuthentication(request('/api/registration/assisted',{...post,headers:{...post.headers,cookie:`isave_session=${token}`,Authorization:'Bearer forged'}}));
+ expect(response?.status).toBe(202);expect(await response?.json()).toEqual({received:true});
+ expect(new URL(fetcher.mock.calls[0]![0]).pathname).toBe('/api/v1/registration/assisted');
+ expect(fetcher.mock.calls[0]![1].headers.Authorization).toBe(`Bearer ${token}`);
+});
+it.each([401,403,503])('does not disclose upstream assisted submission errors (%s)',async status=>{
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response('private account details',{status})));
+ const response=await handleAuthentication(request('/api/registration/assisted',{...post,headers:{...post.headers,cookie:`isave_session=${token}`}}));
+ expect(response?.status).toBe(status);expect(await response?.text()).not.toContain('private account details');
+});

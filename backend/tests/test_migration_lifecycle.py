@@ -46,7 +46,7 @@ def create_legacy_schema(database):
 
     original = MetaData()
     for table in Base.metadata.sorted_tables:
-        if table.name in {"auth_sessions", "user_permissions", "login_throttles", "registration_submissions", "application_events", "savings_interests"}:
+        if table.name in {"auth_sessions", "user_permissions", "login_throttles", "registration_submissions", "application_events", "savings_interests", "application_submissions"}:
             continue
         table.to_metadata(original)
     for name in ("created_at", "updated_at"):
@@ -315,6 +315,34 @@ def test_interest_migration_retains_registration_and_guards_history(migration_da
         assert db.query(SavingsInterest).count()==0
         register(PublicRegistration(first_name='Interest',last_name='Synthetic',email='new-interest@example.test',preferred_category='asset',interest_notice_version=OPTIONS['version']),Request({'type':'http','client':('127.0.0.1',1)}),db)
         assert db.query(SavingsInterest).count()==1
-    with pytest.raises(RuntimeError,match='interests are retained'), database.connect() as connection:
+    with pytest.raises(RuntimeError,match='(interests|provenance).*retained'), database.connect() as connection:
         command.downgrade(migration_config(connection),'0004_pending_registration')
+    require_current_schema(database)
+
+
+def test_assisted_migration_preserves_rows_and_only_grants_administrator(migration_database):
+    from alembic import command
+    from app.migrations import migration_config
+    from sqlalchemy.orm import Session
+    from app.models.application import MembershipApplication,ApplicationSubmission
+    database=migration_database
+    with database.connect() as c:command.upgrade(migration_config(c),'0005_savings_interest')
+    with database.begin() as c:
+        c.execute(text("INSERT INTO roles(name) VALUES ('administrator'),('staff'),('member')"))
+        c.execute(text("INSERT INTO permissions(code) VALUES ('existing:read')"))
+        c.execute(text("INSERT INTO role_permissions(role_id,permission_id) SELECT r.id,p.id FROM roles r CROSS JOIN permissions p"))
+        c.execute(text("INSERT INTO membership_applications(application_number,first_name,last_name,email,status) VALUES ('PRE-ASSIST','Legacy','Synthetic','legacy-assist@example.test','Pending')"))
+        before=c.execute(text('SELECT * FROM membership_applications')).all()
+        old_grants=c.execute(text('SELECT * FROM role_permissions')).all()
+    upgrade(database);upgrade(database);require_current_schema(database)
+    with database.connect() as c:
+        assert c.execute(text('SELECT * FROM membership_applications')).all()==before
+        grants=c.execute(text('SELECT * FROM role_permissions')).all()
+        assert set(old_grants).issubset(set(grants))
+        assert c.execute(text("SELECT r.name FROM roles r JOIN role_permissions rp ON rp.role_id=r.id JOIN permissions p ON p.id=rp.permission_id WHERE p.code='applications:assist'")).scalars().all()==['administrator']
+        assert c.execute(text('SELECT count(*) FROM application_submissions')).scalar()==0
+    with Session(database) as db:
+        db.add(ApplicationSubmission(application_id=1,source='public'));db.commit()
+    with pytest.raises(RuntimeError,match='provenance is retained'),database.connect() as c:
+        command.downgrade(migration_config(c),'0005_savings_interest')
     require_current_schema(database)

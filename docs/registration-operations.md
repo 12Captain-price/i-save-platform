@@ -1,5 +1,8 @@
 # Pending public registration — 19 October 2026
 
+Staff-assisted submission and its separate permission, consent/provenance and
+local activation are documented in [assisted registration](assisted-registration.md).
+
 `/register` submits a persisted membership application, not an account signup.
 It asks for name/email and optional phone, address and reason. It never collects
 a password, payment, identity document or invented policy acceptance.

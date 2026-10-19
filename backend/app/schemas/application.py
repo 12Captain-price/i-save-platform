@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Optional, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator, StrictBool
 from typing_extensions import Annotated
 
 from app.schemas.common import Email, TimestampSchema
@@ -74,6 +74,30 @@ class SavingsInterestRead(BaseModel):
     recorded_at: datetime
 
 
+class AssistedRegistration(PublicRegistration):
+    applicant_authorized: StrictBool
+    authorization_version: Annotated[str, Field(max_length=80)]
+
+    @model_validator(mode='after')
+    def validate_authorization(self):
+        from app.assisted_authorization import AUTHORIZATION
+        if not self.applicant_authorized or self.authorization_version != AUTHORIZATION['version']:
+            raise ValueError('Current applicant authorisation must be acknowledged')
+        return self
+
+
+class SubmissionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    source: str
+    actor_user_id: Optional[int]
+    actor_email: Optional[str]
+    applicant_authorized: bool
+    authorization_version: Optional[str]
+    authorization_text: Optional[str]
+    authorized_at: Optional[datetime]
+    recorded_at: datetime
+
+
 class ApplicationEventRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
@@ -81,6 +105,7 @@ class ApplicationEventRead(BaseModel):
     note: Optional[str]
     actor_user_id: Optional[int]
     recorded_at: datetime
+    actor_email: Optional[str] = None
 
 
 class ApplicationDetail(ApplicationRead):
@@ -88,3 +113,4 @@ class ApplicationDetail(ApplicationRead):
     rejection_reason: Optional[str]
     history: list[ApplicationEventRead]
     savings_interest: Optional[SavingsInterestRead] = None
+    submission: Optional[SubmissionRead] = None

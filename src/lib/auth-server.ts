@@ -72,9 +72,12 @@ async function identity(token: string): Promise<Identity | null> {
 export async function handleAuthentication(request: Request): Promise<Response | null> {
   const url = new URL(request.url);
   const path = url.pathname;
-  if (path !== '/api/registration' && !path.startsWith('/api/review/') && !path.startsWith('/api/auth/') && !path.startsWith('/api/admin/') && !/^\/portal(?:\/|$)/.test(path)) return null;
+  if (path !== '/api/registration' && path !== '/api/registration/assisted' && !path.startsWith('/api/review/') && !path.startsWith('/api/auth/') && !path.startsWith('/api/admin/') && !/^\/portal(?:\/|$)/.test(path)) return null;
   try {
-    if (path === '/api/registration') {
+    if (path === '/api/registration' || path === '/api/registration/assisted') {
+      const assisted = path === '/api/registration/assisted';
+      const token = assisted ? tokenFrom(request) : null;
+      if (assisted && !token) return expired(request);
       if (request.method !== 'POST') return message('Method not allowed.', 405);
       if (request.headers.get('origin') !== url.origin || request.headers.get('x-isave-request') !== '1') return message('Reload the page and try again.', 403);
       if (!request.headers.get('content-type')?.startsWith('application/json')) return message('Check your application details.', 400);
@@ -82,10 +85,12 @@ export async function handleAuthentication(request: Request): Promise<Response |
       if (body.length > 8192) return message('Check your application details.', 400);
       let parsed: unknown;
       try { parsed = JSON.parse(body); } catch { return message('Check your application details.', 400); }
-      const response = await fetch(new URL('/api/v1/registration', process.env['AUTH_API_ORIGIN'] ?? 'http://127.0.0.1:8000'), {
-        method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(parsed),
+      const response = await fetch(new URL(assisted ? '/api/v1/registration/assisted' : '/api/v1/registration', process.env['AUTH_API_ORIGIN'] ?? 'http://127.0.0.1:8000'), {
+        method:'POST', headers:{ 'Content-Type':'application/json', ...(token ? {Authorization:`Bearer ${token}`} : {}) }, body:JSON.stringify(parsed),
         cache:'no-store', redirect:'error', signal:AbortSignal.timeout(10_000),
       });
+      if (assisted && response.status === 401) return expired(request);
+      if (assisted && response.status === 403) return message('Your account does not have permission for assisted submission.',403);
       if (response.status === 202) return Response.json({ received:true }, { status:202, headers });
       return message(response.status === 429 ? 'Too many submissions. Please try again later.' :
         response.status === 400 ? 'Check your application details and try again.' : 'Unable to submit your application. Please try again.',

@@ -9,8 +9,8 @@ export const navigation = {
 };
 export function isRole(value: string): value is Role { return roles.some(role => role === value); }
 export function validScreen(role: Role, screen: string) {
-  return navigation[role].some(item => item.id === screen) || (role === 'member' && ['login', 'register', 'recovery', 'verify', 'setup-password'].includes(screen)) || (role === 'staff' && screen === 'member-record');
+  return ((role === 'staff' || role === 'admin') && screen === 'assist-registration') || navigation[role].some(item => item.id === screen) || (role === 'member' && ['login', 'register', 'recovery', 'verify', 'setup-password'].includes(screen)) || (role === 'staff' && screen === 'member-record');
 }
 export function screenTitle(role: Role, screen: string) {
-  return navigation[role].find(item => item.id === screen)?.label ?? ({ login: 'Member login', register: 'Member registration', recovery: 'Password recovery', verify: 'Email verification', 'setup-password': 'Set your password', 'member-record': 'Member record', 'plan-details': 'Plan details', cms: 'Content management', registrations: 'Registrations' }[screen] ?? 'Portal');
+  return navigation[role].find(item => item.id === screen)?.label ?? ({ 'assist-registration': 'Assist an applicant', login: 'Member login', register: 'Member registration', recovery: 'Password recovery', verify: 'Email verification', 'setup-password': 'Set your password', 'member-record': 'Member record', 'plan-details': 'Plan details', cms: 'Content management', registrations: 'Registrations' }[screen] ?? 'Portal');
 }

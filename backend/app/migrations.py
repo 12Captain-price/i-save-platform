@@ -21,8 +21,8 @@ import app.models  # noqa: F401
 
 
 INITIAL_REVISION = "0001_initial_schema"
-ADOPTION_HEAD = "0005_savings_interest"
-AUTH_TABLES = {"auth_sessions", "user_permissions", "login_throttles", "registration_submissions", "application_events", "savings_interests"}
+ADOPTION_HEAD = "0006_assisted_registration"
+AUTH_TABLES = {"auth_sessions", "user_permissions", "login_throttles", "registration_submissions", "application_events", "savings_interests", "application_submissions"}
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
 

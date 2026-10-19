@@ -94,6 +94,11 @@ The session approach follows the
 
 ## Permission defaults and ownership
 
+Assisted pending submissions now use the separate `applications:assist`
+capability for canonical Staff/Admin roles. Staff need an explicit grant;
+review permission alone does not permit submission. See
+[assisted registration](assisted-registration.md) for consent/session handling.
+
 Bootstrap seeds conservative engineering templates, not organisational approval
 of a financial approval matrix:
 
