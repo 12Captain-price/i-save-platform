@@ -6,6 +6,7 @@ Secrets and connection strings are read from the environment (see
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field
 
 
 class Settings(BaseSettings):
@@ -22,7 +23,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./data/i_save_dev.db"
 
     secret_key: str = "dev-secret-change-me"
-    access_token_expire_minutes: int = 30
+    access_token_expire_minutes: int = Field(default=30, ge=1, le=1440)
 
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 

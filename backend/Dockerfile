@@ -25,4 +25,4 @@ EXPOSE 8000
 
 # Migrate before serving; refuse legacy untracked schemas until explicitly
 # inspected and baselined. Never silently stamp or drop an existing database.
-CMD ["sh", "-c", "python -m app.migrations upgrade && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "python -m app.migrations upgrade && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-proxy-headers"]

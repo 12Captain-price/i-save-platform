@@ -16,10 +16,11 @@ class RoleBase(BaseModel):
 
 
 class RoleCreate(RoleBase):
-    pass
+    model_config = ConfigDict(extra="forbid")
 
 
 class RoleUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     name: Optional[Name] = None
     description: Description = None
 

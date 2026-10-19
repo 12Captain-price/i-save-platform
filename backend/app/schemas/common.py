@@ -9,10 +9,10 @@ from typing_extensions import Annotated
 Money = Annotated[Decimal, Field(decimal_places=2, ge=0, le=99999999.99)]
 """Decimal-safe monetary amount (two decimal places, non-negative)."""
 
-Email = Annotated[str, StringConstraints(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")]
+Email = Annotated[str, StringConstraints(max_length=255, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")]
 """Simple email address validated by pattern (avoids the email-validator dependency)."""
 
-OptionalEmail = Annotated[Optional[str], StringConstraints(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")]
+OptionalEmail = Annotated[Optional[str], StringConstraints(max_length=255, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")]
 """Optional email address validated by pattern when present (allows NULL)."""
 
 ID = Annotated[int, Field(gt=0)]

@@ -29,7 +29,7 @@ class APIError(HTTPException):
 
 
 async def api_error_handler(request: Request, exc: APIError) -> JSONResponse:
-    return JSONResponse(status_code=exc.status_code, content={"error": exc.detail})
+    return JSONResponse(status_code=exc.status_code, content={"error": exc.detail}, headers=exc.headers)
 
 
 def bad_request(message: str = "Invalid request", details: Optional[dict[str, Any]] = None) -> APIError:

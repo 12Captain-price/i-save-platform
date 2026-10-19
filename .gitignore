@@ -58,6 +58,8 @@ venv/
 # Test and coverage output
 .coverage
 htmlcov/
+test-results/
+playwright-report/
 
 # Local database files and SQLite sidecars
 backend/data/

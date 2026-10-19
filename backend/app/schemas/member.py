@@ -21,10 +21,11 @@ class MemberBase(BaseModel):
 
 
 class MemberCreate(MemberBase):
-    pass
+    model_config = ConfigDict(extra="forbid")
 
 
 class MemberUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     member_number: Optional[MemberNumber] = None
     first_name: Annotated[Optional[str], StringConstraints(min_length=1, max_length=100)] = None
     last_name: Annotated[Optional[str], StringConstraints(min_length=1, max_length=100)] = None
@@ -39,3 +40,10 @@ class MemberRead(MemberBase):
     user_id: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class MemberPage(BaseModel):
+    items: list[MemberRead]
+    total: int
+    skip: int
+    limit: int

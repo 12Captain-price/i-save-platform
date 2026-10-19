@@ -25,6 +25,11 @@ enrolments receive migration-time timestamps, not invented historical dates.
 Both paths retain existing rows. Its downgrade deliberately retains timestamps
 because revision 0001 defines them too.
 
+Revision `0003_authentication` adds sessions, login throttles and individual
+permission overrides without changing existing business rows or accounts. See
+[authentication operations](authentication-operations.md) before enabling the
+new backend. Existing revision-0002 databases use upgrade only, never baseline.
+
 ## Existing untracked Docker database
 
 Use a maintenance window with all application writers stopped. Inspect existing
@@ -73,7 +78,9 @@ Baseline requires the original exact 14-table ORM structure, equivalent unique
 keys, expected indexes, columns, types, nullability, PK/FKs and known defaults.
 It accepts absent Python-side defaults or the corresponding known SQL defaults.
 Unexpected tables, views, columns, constraints and defaults cause refusal. It
-records only revision 0001; the following upgrade applies revision 0002.
+records only revision 0001; the following upgrade applies revisions 0002 and
+0003. Legacy inspection still compares only the original 14-table layout;
+authentication tables are created by migration, never by baseline.
 Business rows are not changed by stamping. Take the service out of maintenance
 only after migrations, readiness and representative reads pass.
 

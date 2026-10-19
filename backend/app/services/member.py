@@ -2,6 +2,7 @@
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from app.exceptions import conflict, not_found
 from app.models.contribution import Contribution
@@ -31,6 +32,16 @@ def get_member_by_number(db: Session, member_number: str) -> Member | None:
 
 def list_members(db: Session, skip: int = 0, limit: int = 100) -> list[Member]:
     return db.query(Member).offset(skip).limit(limit).all()
+
+
+def search_members(query, search: str):
+    """Literal, case-insensitive substring search; SQL binds/escapes user input."""
+    value = search.strip()
+    if not value:
+        return query
+    fields = (Member.member_number, Member.first_name, Member.last_name,
+              Member.first_name + " " + Member.last_name, Member.email, Member.phone)
+    return query.filter(or_(*(field.icontains(value, autoescape=True) for field in fields)))
 
 
 def update_member(db: Session, member_id: int, member_in: MemberUpdate) -> Member | None:

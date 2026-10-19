@@ -28,6 +28,8 @@ from app.routers.roles import router as roles_router
 from app.routers.subscriptions import router as subscriptions_router
 from app.routers.users import router as users_router
 from app.routers.verifications import router as verifications_router
+from app.routers.auth import router as auth_router
+from app.routers.admin import router as admin_router
 
 settings = get_settings()
 
@@ -46,6 +48,14 @@ app = FastAPI(
     redoc_url="/docs" if settings.app_debug else None,
     openapi_url="/openapi.json" if settings.app_debug else None,
 )
+
+
+@app.middleware("http")
+async def private_no_store(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/api/v1/"):
+        response.headers["Cache-Control"] = "no-store"
+    return response
 
 # Cross-origin requests from the local frontend dev server.
 origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
@@ -69,7 +79,7 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
             "error": {
                 "code": "validation_error",
                 "message": "Request validation failed",
-                "details": {"errors": exc.errors()},
+                "details": {"errors": [{"loc": e["loc"], "type": e["type"], "msg": e["msg"]} for e in exc.errors()]},
             }
         },
     )
@@ -92,6 +102,8 @@ async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError) -> JS
 # API routers. Each router carries its own path prefix; health is at /health,
 # entity routers are mounted under /api/v1 via their router prefixes.
 app.include_router(health_router)
+app.include_router(auth_router)
+app.include_router(admin_router)
 app.include_router(members_router)
 app.include_router(users_router)
 app.include_router(roles_router)

@@ -2,8 +2,9 @@
 
 Baseline reviewed: 19 October 2026. This tracks engineering delivery; it does
 not record organisational or legal approval. The current work is Phase 1 of
-the requested rollout. Preserve the public design and clearly labelled demo
-portals while replacing prototype flows incrementally with authenticated APIs.
+the requested rollout. Preserve the public design while replacing prototype
+flows incrementally with authenticated APIs. Portal access now requires backend
+authentication; unconnected screens show unavailable states, without sample data.
 
 ## Source material and decisions
 
@@ -35,10 +36,10 @@ stabilisation milestone. No production deployment or paid services are requested
 | Milestone | Current implementation / gap | Acceptance evidence required |
 | --- | --- | --- |
 | 1. Database foundation | Added migration-owned Docker startup, read-only API schema gate, readiness endpoint, guarded legacy adoption, PostgreSQL-compatible Boolean defaults and enrolment timestamps | Fresh and repeated migrations; legacy rows retained; schema drift refused; restart and independent PostgreSQL restore verified |
-| 2. Authentication and permissions | bcrypt helper exists; entity routers currently lack authentication. Caller-supplied actor IDs are not trusted identities | Controlled initial admin creation; member registration; staff invitation; protected sessions, logout and recovery; per-person permissions; member ownership checks; negative Member/Staff/Finance/Admin tests; no self-escalation or last-admin lockout |
+| 2. Authentication and permissions | Controlled admin CLI; hashed revocable bearer sessions, logout/password changes; private API permissions, individual overrides and member ownership; session-derived contribution actors; guarded role/account administration. See authentication operations. Registration, staff invitations and recovery remain outstanding | Controlled initial admin creation; member registration; staff invitation; protected sessions, logout and recovery; per-person permissions; member ownership checks; negative Member/Staff/Finance/Admin tests; no self-escalation or last-admin lockout |
 | 3. Registration and plan workflows | Basic member/application/plan CRUD exists; no complete activation workflow, terms versioning, plan request history or schedule engine | Fee verified separately from savings; account activation distinct from plan approval; approved plan terms snapshotted; rejected requests retained; approval never changes balances |
-| 3. Financial integrity | Decimal fields and pending-only exclusion exist. Reversal overwrites state; verification router trusts query actor IDs; generic verification can diverge from contribution status; totals mix currencies | Immutable linked ledger entries; transactional verification; idempotency and concurrency tests; authenticated actors; currency-specific totals; fee/subscription separation; duplicate/rejected/reversed flows and reconciliation agree with ledger |
-| 4. Communications and administration | Portal screens are demonstrations, not persistent operational services | In-app notifications, provider-backed email, receipts, support tickets, content approval/versioning, consent-aware campaigns, safe retries, reports/exports, append-only audit and individual permissions |
+| 3. Financial integrity | Decimal fields and pending-only exclusion exist. API approval/reversal workflows now return unconfigured; underlying legacy services still need immutable reversal and transactional verification work. Contribution actors come from sessions; totals still mix currencies | Immutable linked ledger entries; transactional verification; idempotency and concurrency tests; authenticated actors; currency-specific totals; fee/subscription separation; duplicate/rejected/reversed flows and reconciliation agree with ledger |
+| 4. Communications and administration | Browser login/logout is connected; role workspaces are protected and unconnected business screens show unavailable states | In-app notifications, provider-backed email, receipts, support tickets, content approval/versioning, consent-aware campaigns, safe retries, reports/exports, append-only audit and individual permissions |
 | 4. Backup and recovery | Local PostgreSQL dump/restore drill is part of Phase 1; production backup centre is still outstanding | Approved recovery point/time targets and retention; encrypted separate storage; schedules/manual backups; verification, access control, failure alerts and regular restore drills |
 | 5. Staging and rollout | No production readiness established | Full browser/API UAT, security review, load tests, HTTPS/secret configuration, monitored staging, rollback, privacy/legal review, staff training, organisational go-live approval |
 
@@ -47,12 +48,13 @@ stabilisation milestone. No production deployment or paid services are requested
 1. Complete and review the database runbook; apply it to the existing office
    development database after a verified backup. Cloud validation does not
    establish the state of the user's laptop or another deployment.
-2. Add persisted, revocable sessions and one-time invitation/recovery tokens
-   (store token hashes, expiry and consumption). Authenticate every private API
-   and derive actors from sessions. Keep public plan browsing separate.
-3. Define permission templates for Member, Staff, Finance and Admin, with
-   per-user grants and server-side ownership checks. Audit changes. Add a
-   controlled CLI/bootstrap path instead of public admin registration.
+2. Persisted revocable sessions, private API protection and session actors are
+   implemented locally. Next add one-time invitation/recovery tokens (store
+   token hashes, expiry and consumption) and provider-backed delivery.
+3. Conservative Member, Staff, Finance and Administrator permission templates,
+   per-person overrides, member ownership, audited security changes and a
+   controlled bootstrap CLI are implemented. Review operational permissions
+   before rollout; see [authentication operations](authentication-operations.md).
 4. Implement pending self-registration, verified fee records and approved
    activation conditions. Keep passwords and token material out of logs and
    responses; test enumeration, throttling, expiry and logout revocation.
@@ -64,7 +66,11 @@ stabilisation milestone. No production deployment or paid services are requested
    post verification and audit in one transaction. Reconcile separate
    currency/fee/subscription/savings totals and exercise concurrent retries.
 7. Wire member/staff/finance/admin screens to these APIs with real loading,
-   error and retry states. Retain explicit demo labelling where not integrated.
+   error and retry states. Authentication and role guards are connected; keep
+    unintegrated screens unavailable. Admin Organisation overview and Members now
+    read backend counts and searchable, paginated records; see
+    [admin directory validation](admin-directory-validation.md) and
+    [frontend authentication](frontend-authentication.md).
 8. Add notifications, receipts, approved content, support, permission-scoped
    reporting and audit search. Choose email/storage providers before delivery
    integrations; marketing needs consent and unsubscribe handling.

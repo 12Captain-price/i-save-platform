@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.security.auth import require
 from app.exceptions import not_found
 from app.models.savings_plan import SavingsPlan
 from app.schemas.savings_plan import SavingsPlanCreate, SavingsPlanRead, SavingsPlanUpdate
@@ -13,7 +14,7 @@ from app.services import plan as plan_service
 router = APIRouter(prefix="/api/v1/plans", tags=["plans"])
 
 
-@router.post("", response_model=SavingsPlanRead, status_code=201)
+@router.post("", response_model=SavingsPlanRead, status_code=201, dependencies=[Depends(require("plans:write"))])
 def create_plan(
     plan_in: SavingsPlanCreate,
     db: Annotated[Session, Depends(get_db)],
@@ -41,7 +42,7 @@ def get_plan(
     return plan
 
 
-@router.patch("/{plan_id}", response_model=SavingsPlanRead)
+@router.patch("/{plan_id}", response_model=SavingsPlanRead, dependencies=[Depends(require("plans:write"))])
 def update_plan(
     plan_id: Annotated[int, Path(gt=0)],
     plan_in: SavingsPlanUpdate,

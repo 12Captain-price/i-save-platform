@@ -1,6 +1,6 @@
 """Membership application request/response schemas."""
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 from typing_extensions import Annotated
@@ -23,7 +23,8 @@ class ApplicationBase(BaseModel):
 
 
 class ApplicationCreate(ApplicationBase):
-    pass
+    model_config = ConfigDict(extra="forbid")
+    status: Literal["Submitted"] = "Submitted"
 
 
 class ApplicationUpdate(BaseModel):

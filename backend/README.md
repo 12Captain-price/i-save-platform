@@ -1,7 +1,8 @@
 # i-Save Backend (Phase 1: Foundation)
 
 Python + FastAPI backend targeting PostgreSQL, with SQLAlchemy ORM and Alembic
-migrations. The existing React/TanStack Start frontend is **untouched**.
+migrations. The React/TanStack Start frontend preserves its design and connects
+login/logout through a same-origin authentication bridge.
 
 ## Local development setup
 
@@ -90,11 +91,14 @@ No withdrawal, interest, bonus, penalty or refund policies are implemented.
 ## Security
 
 - Secrets live in environment variables (`.env`), never in committed source.
-- Password hashing (bcrypt via passlib) is provided in `app/security/hashing.py`
-  and ready for Phase 2 authentication; no server-side auth endpoints exist yet.
-- Entity APIs currently have no authentication or backend permission enforcement.
-  Use synthetic data in local development only until the authentication and
-  permissions milestone is complete; frontend-only checks provide no API security.
+- Passwords use bcrypt directly. Revocable bearer sessions store token hashes.
+- Private entity APIs require server-side permissions and member ownership;
+  plan browsing remains public. Initial administrators use a controlled CLI.
+- See [authentication operations](../docs/authentication-operations.md) for setup,
+  session contracts, permission defaults and intentionally disabled workflows.
+  Frontend login uses the same-origin bridge described in
+  [frontend authentication](../docs/frontend-authentication.md).
+  Invitations, recovery and public registration remain follow-ups.
 
 ## Migration status
 
@@ -102,5 +106,5 @@ Alembic migrations live in `alembic/versions/`. Generate a new migration with:
 
 ```powershell
 alembic revision --autogenerate -m "describe the change"
-alembic upgrade head
+python -m app.migrations upgrade
 ```

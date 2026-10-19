@@ -1,6 +1,6 @@
 """Registration-fee request/response schemas."""
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 from typing_extensions import Annotated
@@ -19,7 +19,8 @@ class FeeBase(BaseModel):
 
 
 class FeeCreate(FeeBase):
-    pass
+    model_config = ConfigDict(extra="forbid")
+    status: Literal["Pending"] = "Pending"
 
 
 class FeeUpdate(BaseModel):

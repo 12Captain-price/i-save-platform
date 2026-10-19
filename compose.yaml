@@ -72,10 +72,11 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
+      AUTH_API_ORIGIN: http://backend:8000
       HOST: ${HOST:-0.0.0.0}
       PORT: ${PORT:-3000}
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     # The frontend is a standalone SSR app (no server-to-backend calls at
     # runtime), so it does not depend on the backend container.
     healthcheck:

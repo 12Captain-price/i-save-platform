@@ -5,19 +5,19 @@ from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.security.auth import resource_access, unconfigured
 from app.models.verification import PaymentVerification
-from app.schemas.verification import VerificationCreate, VerificationRead
+from app.schemas.verification import VerificationRead
 from app.services import verification as verification_service
 
-router = APIRouter(prefix="/api/v1/verifications", tags=["verifications"])
+router = APIRouter(prefix="/api/v1/verifications", tags=["verifications"], dependencies=[Depends(resource_access("verifications"))])
 
 
-@router.post("", response_model=VerificationRead, status_code=201)
+@router.post("", response_model=VerificationRead, status_code=201, dependencies=[Depends(unconfigured)])
 def create_verification(
-    verification_in: VerificationCreate,
-    db: Annotated[Session, Depends(get_db)],
 ) -> PaymentVerification:
-    return verification_service.create_verification(db, verification_in)
+    # No generic write contract until transactional financial rules are approved.
+    unconfigured()
 
 
 @router.get("", response_model=list[VerificationRead])

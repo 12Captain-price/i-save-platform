@@ -1,0 +1,16 @@
+import { Building2, Plane, ShieldAlert, Briefcase, GraduationCap, LayoutDashboard, Layers, FileText, Wallet, UserRound, Bell, LifeBuoy, Users, UserPlus, User, List, ClipboardList, Megaphone, ShieldCheck, BookOpen, BarChart3, History, Settings } from 'lucide-react';
+export type Role = 'member' | 'staff' | 'finance' | 'admin';
+export const roles: Role[] = ['member', 'staff', 'finance', 'admin'];
+export const navigation = {
+  member: [ { id: 'dashboard', label: 'Overview', icon: LayoutDashboard }, { id: 'plans', label: 'Savings plans', icon: Layers }, { id: 'plan-details', label: 'Plan details', icon: List }, { id: 'applications', label: 'Applications', icon: FileText }, { id: 'contributions', label: 'Contributions', icon: Wallet }, { id: 'profile', label: 'Profile & security', icon: UserRound }, { id: 'notifications', label: 'Notifications', icon: Bell }, { id: 'support', label: 'Support', icon: LifeBuoy } ],
+  staff: [ { id: 'dashboard', label: 'Overview', icon: LayoutDashboard }, { id: 'members', label: 'Members', icon: Users }, { id: 'registrations', label: 'Registrations', icon: UserPlus }, { id: 'requests', label: 'Plan requests', icon: ClipboardList }, { id: 'payments', label: 'Office payments', icon: Wallet }, { id: 'support', label: 'Member support', icon: LifeBuoy }, { id: 'announcements', label: 'Announcements', icon: Megaphone } ],
+  finance: [ { id: 'dashboard', label: 'Overview', icon: LayoutDashboard }, { id: 'verification', label: 'Payment verification', icon: ShieldCheck }, { id: 'reconciliation', label: 'Reconciliation', icon: ClipboardList }, { id: 'ledger', label: 'Contribution ledger', icon: BookOpen }, { id: 'fees', label: 'Subscription fees', icon: Wallet }, { id: 'reports', label: 'Reports', icon: BarChart3 }, { id: 'audit', label: 'Audit history', icon: History } ],
+  admin: [ { id: 'dashboard', label: 'Organisation overview', icon: LayoutDashboard }, { id: 'members', label: 'Members', icon: Users }, { id: 'staff', label: 'Staff', icon: UserRound }, { id: 'roles', label: 'Roles & permissions', icon: ShieldCheck }, { id: 'plans', label: 'Savings plans', icon: Layers }, { id: 'finance', label: 'Finance oversight', icon: BarChart3 }, { id: 'audit', label: 'Activity log', icon: History }, { id: 'announcements', label: 'Announcements', icon: Megaphone }, { id: 'cms', label: 'Content management', icon: FileText }, { id: 'settings', label: 'Organisation settings', icon: Settings } ],
+};
+export function isRole(value: string): value is Role { return roles.some(role => role === value); }
+export function validScreen(role: Role, screen: string) {
+  return navigation[role].some(item => item.id === screen) || (role === 'member' && ['login', 'register', 'recovery', 'verify', 'setup-password'].includes(screen)) || (role === 'staff' && screen === 'member-record');
+}
+export function screenTitle(role: Role, screen: string) {
+  return navigation[role].find(item => item.id === screen)?.label ?? ({ login: 'Member login', register: 'Member registration', recovery: 'Password recovery', verify: 'Email verification', 'setup-password': 'Set your password', 'member-record': 'Member record', 'plan-details': 'Plan details', cms: 'Content management', registrations: 'Registrations' }[screen] ?? 'Portal');
+}

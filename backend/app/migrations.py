@@ -21,7 +21,8 @@ import app.models  # noqa: F401
 
 
 INITIAL_REVISION = "0001_initial_schema"
-ADOPTION_HEAD = "0002_enrolment_timestamps"
+ADOPTION_HEAD = "0003_authentication"
+AUTH_TABLES = {"auth_sessions", "user_permissions", "login_throttles"}
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -83,6 +84,8 @@ def schema_differences(connection, *, legacy: bool = False) -> list[str]:
     # Revision 0002 then supplies the missing timestamps without losing rows.
     original_metadata = MetaData()
     for table in Base.metadata.sorted_tables:
+        if legacy and table.name in AUTH_TABLES:
+            continue
         table.to_metadata(original_metadata)
     if legacy:
         for name in ("created_at", "updated_at"):
@@ -93,7 +96,7 @@ def schema_differences(connection, *, legacy: bool = False) -> list[str]:
     actual_tables = set(inspector.get_table_names()) - {"alembic_version"}
     differences = []
     if actual_tables != expected_tables:
-        differences.append("Table set differs from the original 14-table schema")
+        differences.append("Table set differs from the original 14-table schema" if legacy else "Table set differs from the expected schema")
     if inspector.get_view_names():
         differences.append("Unexpected views need manual review")
 

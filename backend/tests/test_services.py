@@ -42,6 +42,7 @@ def test_duplicate_member_number_rejected(db):
 
 def test_pending_contribution_is_not_confirmed_savings(db):
     member = create_member(db, MemberCreate(member_number="IS-1042", first_name="Tariro", last_name="Moyo"))
+    recorder = create_user(db, UserCreate(email="recorder@example.test", password="recorderpass123"))
     contribution = create_contribution(
         db,
         ContributionCreate(
@@ -49,7 +50,7 @@ def test_pending_contribution_is_not_confirmed_savings(db):
             member_id=member.id,
             amount=Decimal("150.00"),
         ),
-        recorded_by=1,
+        recorded_by=recorder.id,
     )
     assert contribution.status == "Pending verification"
     # Pending contributions are NOT confirmed savings.
@@ -68,7 +69,7 @@ def test_verified_contribution_is_confirmed_savings(db):
             member_id=member.id,
             amount=Decimal("80.00"),
         ),
-        recorded_by=1,
+        recorded_by=verifier.id,
     )
     verified = verify_contribution(db, contribution.id, verified_by=verifier.id, note="Office receipt reviewed.")
     assert verified.status == "Verified"
@@ -86,7 +87,7 @@ def test_reversed_contribution_not_counted(db):
             member_id=member.id,
             amount=Decimal("60.00"),
         ),
-        recorded_by=1,
+        recorded_by=verifier.id,
     )
     verify_contribution(db, contribution.id, verified_by=verifier.id)
     reversed_contribution = reverse_contribution(db, contribution.id, note="Reversed in error.")
@@ -96,7 +97,7 @@ def test_reversed_contribution_not_counted(db):
 
 def test_application_decision_transitions_status(db):
     member = create_member(db, MemberCreate(member_number="IS-1045", first_name="Rudo", last_name="Chirwa"))
-    create_user(db, UserCreate(email="reviewer@example.com", password="reviewerpass123", role_id=None))
+    reviewer = create_user(db, UserCreate(email="reviewer@example.com", password="reviewerpass123", role_id=None))
     application = create_application(
         db,
         __import__("app.schemas.application", fromlist=["ApplicationCreate"]).ApplicationCreate(
@@ -114,8 +115,8 @@ def test_application_decision_transitions_status(db):
         db,
         application.id,
         status="Approved",
-        reviewer_id=2,
+        reviewer_id=reviewer.id,
     )
     assert decided.status == "Approved"
-    assert decided.reviewed_by == 2
+    assert decided.reviewed_by == reviewer.id
     assert decided.reviewed_at is not None

@@ -4,6 +4,11 @@ Validated in this cloud workspace using synthetic data. This does not validate
 the user's laptop database, staging, production, organisational policy approval,
 or the remaining authentication/financial requirements.
 
+This is the database milestone's historical validation record. The later
+authentication implementation and its operational limits are documented in
+[authentication operations](authentication-operations.md); statements below
+about unauthenticated routes describe this earlier baseline.
+
 | Check | Result |
 | --- | --- |
 | Frontend `npm test` | 22 tests passed, 2 test files |

@@ -27,7 +27,7 @@ export function SiteHeader() {
           </ul>
         </nav>
         <div className="hidden items-center gap-6 lg:flex">
-          <Link to="/portal/$role/$screen" params={{ role: "member", screen: "login" }} className="text-sm font-semibold hover:text-primary">Log In</Link>
+          <Link to="/login" className="text-sm font-semibold hover:text-primary">Log In</Link>
           <Link to="/register" className="rounded-sm bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-transform hover:-translate-y-0.5">
             Get Started
           </Link>
@@ -54,7 +54,7 @@ export function SiteHeader() {
             ))}
           </ul>
           <div className="mt-4 grid grid-cols-2 gap-3">
-            <Link to="/portal/$role/$screen" params={{ role: "member", screen: "login" }} onClick={() => setOpen(false)} className="rounded-sm border border-border py-3 text-center font-semibold">Log In</Link>
+            <Link to="/login" onClick={() => setOpen(false)} className="rounded-sm border border-border py-3 text-center font-semibold">Log In</Link>
             <Link to="/register" onClick={() => setOpen(false)} className="rounded-sm bg-primary py-3 text-center font-bold text-primary-foreground">Get Started</Link>
           </div>
         </nav>
