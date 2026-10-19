@@ -94,7 +94,7 @@ test('invalid login errors, unsupported account pages and login CSRF refusal', a
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveText('Incorrect email or password.');
   expect((await request.post('/api/auth/login', { data: { email: 'browser-admin@example.test', password }, headers: { Origin: 'https://attacker.test', 'X-Isave-Request': '1' } })).status()).toBe(403);
-  for (const path of ['/register','/recovery','/verify','/setup-password']) {
+  for (const path of ['/recovery','/verify','/setup-password']) {
     await page.goto(path, { waitUntil: 'domcontentloaded' });
     await expect(page.getByText('This service is not available online yet.')).toBeVisible();
     await expect(page.locator('form')).toHaveCount(0);
@@ -160,3 +160,63 @@ test('invalid login errors, unsupported account pages and login CSRF refusal', a
   await expect(page).toHaveURL(/\/login$/);
  });
 
+
+
+test('public pending registration and authorised Staff/Admin review without activation', async ({page})=>{
+ test.setTimeout(90_000);
+ expect((await page.request.get('/api/review/applications')).status()).toBe(401);
+ await page.goto('/register',{waitUntil:'domcontentloaded'});
+ await page.setViewportSize({width:390,height:844});
+ await page.getByLabel('First name (required)').fill('Public');
+ await page.getByLabel('Last name (required)').fill('Synthetic');
+ await page.getByLabel('Email address (required)').fill('public-applicant@example.test');
+ await page.getByLabel('Phone (optional)').fill('+27000123456');
+ await page.getByLabel('Reason for applying (optional)').fill('Synthetic browser registration only.');
+ await page.getByRole('radio',{name:'Education',exact:true}).locator('..').click();
+ await expect(page.getByRole('radio',{name:'Education',exact:true})).toBeChecked();
+ await expect(page.getByRole('region',{name:'Selected category information'})).toContainText('savings-interest-v1');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+ await page.screenshot({path:'test-results/registration-mobile.png'});
+ await page.getByRole('button',{name:'Submit application'}).click();
+ await expect(page.getByRole('heading',{name:'Application received'})).toBeVisible();
+ const headers={Origin:'http://127.0.0.1:13000','X-Isave-Request':'1'};
+ const body={first_name:'Changed',last_name:'Duplicate',email:'PUBLIC-APPLICANT@example.test'};
+ const duplicate=await page.request.post('/api/registration',{headers,data:body});
+ const known=await page.request.post('/api/registration',{headers,data:{...body,email:'browser-admin@example.test'}});
+ expect(duplicate.status()).toBe(202);expect(known.status()).toBe(202);expect(await duplicate.json()).toEqual(await known.json());
+ expect((await page.request.post('/api/registration',{headers:{...headers,Origin:'https://attacker.test'},data:body})).status()).toBe(403);
+ expect(python(guard+`from sqlalchemy.orm import Session; from app.models.application import MembershipApplication; from app.models.user import User; from app.models.member import Member; from app.models.registration_fee import RegistrationFee; db=Session(engine); print(db.query(MembershipApplication).count(),db.query(User).count(),db.query(Member).count(),db.query(RegistrationFee).count())`).trim()).toBe('1 5 0 0');
+ python(guard+`from sqlalchemy.orm import Session; from app.models.application import MembershipApplication; db=Session(engine); db.add_all([MembershipApplication(application_number='REVIEW-%02d'%i,first_name='Review',last_name='Fixture%02d'%i,email='review%02d@example.test'%i,status='Pending') for i in range(12)]);db.commit()`);
+ for(const role of ['staff','admin']){
+  await page.goto('/login',{waitUntil:'domcontentloaded'});
+  await page.getByLabel('Email address',{exact:true}).fill('browser-'+role+'@example.test');
+  await page.getByLabel('Password',{exact:true}).fill(password);
+  await page.getByRole('button',{name:'Log in',exact:true}).click();
+  await expect(page).toHaveURL(new RegExp(`/portal/${role}/dashboard$`));
+  await page.goto(`/portal/${role}/registrations`,{waitUntil:'domcontentloaded'});
+  await expect(page.getByText('13 applications recorded')).toBeVisible();
+  await page.getByRole('button',{name:'Next',exact:true}).click();
+  await expect(page.getByText('Page 2 of 2')).toBeVisible();
+  await page.getByLabel('Find an application').fill('NO-MATCH');
+  await page.getByRole('button',{name:'Search',exact:true}).click();
+  await expect(page.getByText('No applications match your search')).toBeVisible();
+  await page.getByLabel('Find an application').fill('PUBLIC-APPLICANT@EXAMPLE');
+  await page.getByRole('button',{name:'Search',exact:true}).click();
+  await expect(page.getByText('1 application found')).toBeVisible();
+  await expect(page.getByText('Page 1 of 1')).toBeVisible();
+  await page.getByRole('button',{name:'View application for Public Synthetic'}).click();
+  await expect(page.getByRole('heading',{name:'Status history'})).toBeVisible();
+  await expect(page.getByText('Recorded information version: savings-interest-v1')).toBeVisible();
+  await expect(page.getByText('Education',{exact:true})).toBeVisible();
+  await expect(page.getByText('Public application submitted; awaiting office review.')).toBeVisible();
+  await expect(page.getByRole('button',{name:/approve|activate|confirm payment/i})).toHaveCount(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+  await page.screenshot({path:`test-results/${role}-application-review-mobile.png`});
+  await page.setViewportSize({width:1280,height:900});
+  await page.screenshot({path:`test-results/${role}-application-review-desktop.png`});
+  await page.getByRole('button',{name:'Log out'}).click();
+  await expect(page).toHaveURL(/\/login$/);
+  expect((await page.request.get('/api/review/applications')).status()).toBe(401);
+ }
+ expect(python(guard+`from sqlalchemy.orm import Session; from app.models.application import MembershipApplication; from app.models.member import Member; from app.models.registration_fee import RegistrationFee; db=Session(engine); a=db.query(MembershipApplication).filter_by(email='public-applicant@example.test').one(); print(a.status,a.member_id,db.query(Member).count(),db.query(RegistrationFee).count())`).trim()).toBe('Pending None 0 0');
+});

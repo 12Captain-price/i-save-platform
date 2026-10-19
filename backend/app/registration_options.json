@@ -1,0 +1,12 @@
+{
+  "version": "savings-interest-v1",
+  "notice": "Expression of interest—plan terms awaiting confirmation.",
+  "rules": "Contribution amount, currency, frequency, duration, fees and detailed rules are awaiting approval. No plan terms are available to accept. Choosing a category does not apply for or approve a plan, enrol you, activate membership or confirm payment.",
+  "categories": [
+    { "id": "asset", "label": "Asset", "purpose": "Save towards an asset or a significant purchase." },
+    { "id": "holiday", "label": "Holiday", "purpose": "Save towards a future holiday or travel goal." },
+    { "id": "emergency", "label": "Emergency", "purpose": "Set money aside for unexpected needs." },
+    { "id": "retrenchment", "label": "Retrenchment", "purpose": "Prepare a savings cushion for a possible loss of employment." },
+    { "id": "education", "label": "Education", "purpose": "Save towards future education costs." }
+  ]
+}

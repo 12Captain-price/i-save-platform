@@ -39,7 +39,7 @@ function Eligibility() {
             </div>
             <CardTitle>Zimbabwe-based</CardTitle>
             <CardContent>
-              <CardDescription>i-Save serves members in Zimbabwe. Office contributions are made in Harare.</CardDescription>
+              <CardDescription>i-Save serves members in Zimbabwe. Contact the Bulawayo office for information about office contributions.</CardDescription>
             </CardContent>
           </Card>
           <Card className="rounded-xl border border-border bg-card p-6">

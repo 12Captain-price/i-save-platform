@@ -1,4 +1,5 @@
 import { Building2, Plane, ShieldAlert, Briefcase, GraduationCap, LayoutDashboard, Layers, FileText, Wallet, UserRound, Bell, LifeBuoy, Users, UserPlus, User, List, ClipboardList, Megaphone, ShieldCheck, BookOpen, BarChart3, History, Settings } from 'lucide-react';
+import { publicContact, publicContactEntries } from '@/lib/public-contact';
 export type Role = 'member' | 'staff' | 'finance' | 'admin';
 export const roles: Role[] = ['member', 'staff', 'finance', 'admin'];
 export const plans = [
@@ -73,7 +74,7 @@ export const orgRoles: RoleDef[] = [
   { id: 'finance', name: 'Finance', description: 'Verifies, reconciles and reports on payments.', permissions: ['view:ledger', 'verify:payments', 'reconcile:payments', 'export:reports'], members: 0 },
   { id: 'admin', name: 'Administrator', description: 'Organisation-wide administration and settings.', permissions: ['manage:staff', 'manage:roles', 'manage:plans', 'manage:announcements', 'manage:settings', 'view:audit'], members: 0 },
 ];
-export const orgSettings: OrgSettings = { name: 'i-Save Savings Organisation', currency: 'USD', location: 'Harare, Zimbabwe', registrationFee: 20, monthlyFee: 5, feeNote: 'Unconfirmed configuration values used for demonstration only — not approved policy.' };
+export const orgSettings: OrgSettings = { name: 'i-Save Savings Organisation', currency: 'USD', location: publicContact.office, registrationFee: 20, monthlyFee: 5, feeNote: 'Unconfirmed configuration values used for demonstration only — not approved policy.' };
 export const adminPlans: AdminPlan[] = [
   { name: 'Asset Savings', description: 'Put money aside for a significant purchase.', active: true },
   { name: 'Holiday Savings', description: 'Make space in your plans for time away.', active: true },
@@ -135,15 +136,10 @@ export const faqs: FAQ[] = [
   { id: 'FAQ-002', question: 'How do I make a contribution?', answer: 'Contributions are made in person at the organisation’s office. Authorised staff record each payment, and you can view your recorded savings online.', category: 'Contributions', order: 2, published: true },
   { id: 'FAQ-003', question: 'What savings plans are available?', answer: 'The organisation offers Asset Savings, Holiday Savings, Emergency Savings, Retrenchment Savings and Education Savings plans. Approved terms are provided by the organisation.', category: 'Plans', order: 3, published: true },
   { id: 'FAQ-004', question: 'Are there fees?', answer: 'Provisional figures of a $20 one-time registration fee and a $5 monthly subscription fee are shown for demonstration only. These have not been approved as final policy.', category: 'Fees', order: 4, published: true },
-  { id: 'FAQ-005', question: 'How long does registration approval take?', answer: 'Registrations are reviewed by authorised staff. You will be notified of the outcome by email once a decision has been made.', category: 'Membership', order: 5, published: true },
+  { id: 'FAQ-005', question: 'How long does registration approval take?', answer: 'Authorised staff review applications. No review deadline is promised. Contact the office for help or follow-up; further instructions about checks, fee verification and account setup are provided when those processes are available.', category: 'Membership', order: 5, published: true },
   { id: 'FAQ-006', question: 'Can I apply for more than one savings plan?', answer: 'Yes, members can hold more than one savings plan. Speak with the office team about combining plans.', category: 'Plans', order: 6, published: true },
 ];
-export const contactInfo: ContactInfo[] = [
-  { id: 'CON-001', label: 'Email', value: 'info@isave.org.zw', type: 'email', order: 1 },
-  { id: 'CON-002', label: 'Phone', value: '+263 4 123 4567', type: 'phone', order: 2 },
-  { id: 'CON-003', label: 'Office', value: 'Harare, Zimbabwe', type: 'address', order: 3 },
-  { id: 'CON-004', label: 'Website', value: 'isave.org.zw', type: 'web', order: 4 },
-];
+export const contactInfo: ContactInfo[] = publicContactEntries.map(({ id, label, value, type, order }) => ({ id, label, value, type: type as ContactInfo['type'], order }));
 export const siteContent: SiteContent[] = [
   { id: 'SC-001', section: 'homepage', key: 'eyebrow', value: 'Savings, structured', published: true },
   { id: 'SC-002', section: 'homepage', key: 'headline', value: 'Your future, built one saving at a time.', published: true },
@@ -152,8 +148,8 @@ export const siteContent: SiteContent[] = [
   { id: 'SC-005', section: 'about', key: 'content', value: 'i-Save is a savings platform for members of a Zimbabwean savings organisation. Members contribute at the office and authorised staff record each payment. Members can view their recorded savings, plan applications and contribution history online.', published: true },
   { id: 'SC-006', section: 'footer', key: 'copyright', value: '© {year} i-Save', published: true },
   { id: 'SC-007', section: 'footer', key: 'attribution', value: 'An initiative of Zimbabwe Progressive Youth Foundation', published: true },
-  { id: 'SC-008', section: 'contact', key: 'email', value: 'info@isave.org.zw', published: true },
-  { id: 'SC-009', section: 'contact', key: 'phone', value: '+263 4 123 4567', published: true },
-  { id: 'SC-010', section: 'contact', key: 'address', value: 'Harare, Zimbabwe', published: true },
+  { id: 'SC-008', section: 'contact', key: 'email', value: publicContact.email, published: true },
+  { id: 'SC-009', section: 'contact', key: 'phone', value: publicContact.phones[0].value, published: true },
+  { id: 'SC-010', section: 'contact', key: 'address', value: publicContact.office, published: true },
 ];
 export const registrationApplications: RegistrationApplication[] = [];

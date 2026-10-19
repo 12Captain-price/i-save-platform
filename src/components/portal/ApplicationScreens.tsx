@@ -1,0 +1,44 @@
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Feedback, useRecords } from './AdminDataScreens';
+
+type Application = {savings_interest?:{category_label:string;purpose:string;notice_text:string;notice_version:string;recorded_at:string}|null;id:number; application_number:string; first_name:string; last_name:string; email:string; phone:string|null; address:string|null; reason:string|null; status:string; submitted_at:string; rejection_reason:string|null; history:{id:number;status:string;note:string|null;actor_user_id:number|null;recorded_at:string}[]};
+type Page = {items:Application[];total:number;skip:number;limit:number};
+const date = (value:string) => new Intl.DateTimeFormat('en-GB', {dateStyle:'medium',timeStyle:'short',timeZone:'UTC'}).format(new Date(value)) + ' UTC';
+const policy = 'Fee verification and membership activation are disabled while approved policy is missing. Viewing an application does not approve it or confirm payment.';
+
+function ApplicationDetails({id,back}:{id:number;back:()=>void}) {
+  const result = useRecords<Application>(`/api/review/applications/${id}`);
+  const record = result.data;
+  return <div className="space-y-6"><Button variant="outline" onClick={back}>Back to applications</Button>
+    {result.error ? <Feedback {...result}/> : !record ? <p role="status">Loading application...</p> : <>
+      <section className="rounded-xl border border-primary/25 bg-primary/5 p-5 sm:p-8"><h2 className="text-xl font-semibold">Preferred savings category</h2>{record.savings_interest ? <div className="mt-4 space-y-3"><p className="font-semibold text-primary">{record.savings_interest.category_label}</p><p className="text-sm">{record.savings_interest.purpose}</p><p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{record.savings_interest.notice_text}</p><p className="text-xs text-muted-foreground">Recorded information version: {record.savings_interest.notice_version}</p><p className="text-xs text-muted-foreground">Interest recorded: {date(record.savings_interest.recorded_at)}. No formal plan application, approval or terms acceptance.</p></div> : <p className="mt-3 text-sm text-muted-foreground">No category preference recorded. Membership registration is separate from plan approval.</p>}</section>
+      <section className="rounded-xl border border-border bg-card p-5 sm:p-8"><p className="text-sm font-semibold text-primary">{record.status}</p><h2 className="mt-2 break-words text-2xl font-semibold">{record.first_name} {record.last_name}</h2><p className="mt-2 break-all text-xs text-muted-foreground">{record.application_number}</p>
+        <dl className="mt-7 grid gap-5 sm:grid-cols-2">{[['Email',record.email],['Phone',record.phone],['Address',record.address],['Submitted',date(record.submitted_at)],['Reason for applying',record.reason],['Recorded rejection reason',record.rejection_reason]].map(([label,value]) => <div key={label}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 whitespace-pre-wrap break-words text-sm">{value || 'Not recorded'}</dd></div>)}</dl>
+      </section>
+      <section className="rounded-xl border border-border bg-card p-5 sm:p-8"><h2 className="text-xl font-semibold">Status history</h2>{record.history.length ? <ol className="mt-5 space-y-5">{record.history.map(event => <li key={event.id} className="border-l-2 border-primary/40 pl-4"><h3 className="font-semibold">{event.status}</h3><p className="mt-1 text-xs text-muted-foreground">{date(event.recorded_at)}{event.actor_user_id !== null ? ` · Account ${event.actor_user_id}` : ''}</p>{event.note && <p className="mt-2 whitespace-pre-wrap break-words text-sm text-muted-foreground">{event.note}</p>}</li>)}</ol> : <p className="mt-4 text-sm text-muted-foreground">No recorded history is available. Earlier transitions cannot be inferred.</p>}</section>
+    </>}
+    <p className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm leading-relaxed text-muted-foreground">{policy}</p>
+  </div>;
+}
+
+export function ApplicationScreens() {
+  const [selected,setSelected] = useState<number|null>(null);
+  const [draft,setDraft] = useState(''); const [search,setSearch] = useState(''); const [skip,setSkip] = useState(0);
+  if (selected !== null) return <ApplicationDetails id={selected} back={()=>setSelected(null)}/>;
+  return <ApplicationList draft={draft} setDraft={setDraft} search={search} setSearch={setSearch} skip={skip} setSkip={setSkip} select={setSelected}/>;
+}
+
+function ApplicationList({draft,setDraft,search,setSearch,skip,setSkip,select}:{draft:string;setDraft:(v:string)=>void;search:string;setSearch:(v:string)=>void;skip:number;setSkip:(v:number)=>void;select:(id:number)=>void}) {
+  const result = useRecords<Page>(`/api/review/applications?${new URLSearchParams({q:search,skip:String(skip),limit:'10'})}`);
+  const data = result.data;
+  return <div className="space-y-5"><p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">Review submitted details and recorded status history. Applications are separate from active memberships and payments.</p>
+    <section className="overflow-hidden rounded-xl border border-border bg-card"><form className="flex flex-col gap-3 border-b border-border p-5 sm:flex-row sm:items-end sm:p-6" onSubmit={event=>{event.preventDefault();setSearch(draft.trim());setSkip(0);}}><div className="min-w-0 flex-1"><label htmlFor="application-search" className="mb-2 block text-sm">Find an application</label><Input id="application-search" value={draft} onChange={event=>setDraft(event.target.value)} maxLength={100} placeholder="Name, reference, email, phone or status" type="search"/></div><Button disabled={result.status==='loading'}>Search</Button>{(search||draft) && <Button type="button" variant="outline" onClick={()=>{setDraft('');setSearch('');setSkip(0);}}>Clear</Button>}<Button type="button" variant="outline" disabled={result.status==='loading'} onClick={result.reload}>Refresh applications</Button></form>
+      {result.error ? <div className="p-5"><Feedback {...result}/></div> : !data ? <p role="status" className="p-8">Loading applications...</p> : <><p role="status" className="px-5 py-4 text-sm text-muted-foreground">{data.total} {data.total===1?'application':'applications'} {search?'found':'recorded'}</p>
+        {data.items.length ? <ul className="divide-y divide-border border-t border-border">{data.items.map(record=><li key={record.id} className="grid gap-4 p-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-center"><div className="min-w-0"><h2 className="break-words font-semibold">{record.first_name} {record.last_name}</h2><p className="mt-1 break-all text-xs text-muted-foreground">{record.application_number}</p><p className="mt-2 text-xs text-muted-foreground">{date(record.submitted_at)}</p></div><div className="min-w-0"><p className="break-words text-sm">{record.email}</p><p className="mt-2 text-xs font-semibold text-primary">{record.status}</p></div><Button variant="outline" onClick={()=>select(record.id)} aria-label={`View application for ${record.first_name} ${record.last_name}`}>View application</Button></li>)}</ul> : <div role="status" className="border-t border-border px-5 py-12 text-center"><h2 className="text-lg font-semibold">{search?'No applications match your search':data.total?'No applications on this page':'No applications yet'}</h2><p className="mt-2 text-sm text-muted-foreground">{search?'Try different details or clear your search.':'Submitted application records will appear here.'}</p></div>}
+        <nav aria-label="Application pages" className="flex flex-wrap items-center justify-between gap-3 border-t border-border p-5"><Button variant="outline" disabled={skip===0} onClick={()=>setSkip(Math.max(0,skip-10))}>Previous</Button><p className="text-xs text-muted-foreground">Page {Math.floor(skip/10)+1} of {Math.max(1,Math.ceil(data.total/10))}</p><Button variant="outline" disabled={skip+10>=data.total} onClick={()=>setSkip(skip+10)}>Next</Button></nav>
+      </>}
+    </section><p className="text-xs leading-relaxed text-muted-foreground">{policy}</p>
+  </div>;
+}

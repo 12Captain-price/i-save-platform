@@ -36,4 +36,9 @@ coverage/
 .DS_Store
 
 # The backend has its own build context; exclude it from the frontend image.
-backend/
+backend/**
+!backend/app/
+backend/app/**
+!backend/app/registration_options.json
+test-results/
+playwright-report/

@@ -36,8 +36,8 @@ stabilisation milestone. No production deployment or paid services are requested
 | Milestone | Current implementation / gap | Acceptance evidence required |
 | --- | --- | --- |
 | 1. Database foundation | Added migration-owned Docker startup, read-only API schema gate, readiness endpoint, guarded legacy adoption, PostgreSQL-compatible Boolean defaults and enrolment timestamps | Fresh and repeated migrations; legacy rows retained; schema drift refused; restart and independent PostgreSQL restore verified |
-| 2. Authentication and permissions | Controlled admin CLI; hashed revocable bearer sessions, logout/password changes; private API permissions, individual overrides and member ownership; session-derived contribution actors; guarded role/account administration. See authentication operations. Registration, staff invitations and recovery remain outstanding | Controlled initial admin creation; member registration; staff invitation; protected sessions, logout and recovery; per-person permissions; member ownership checks; negative Member/Staff/Finance/Admin tests; no self-escalation or last-admin lockout |
-| 3. Registration and plan workflows | Basic member/application/plan CRUD exists; no complete activation workflow, terms versioning, plan request history or schedule engine | Fee verified separately from savings; account activation distinct from plan approval; approved plan terms snapshotted; rejected requests retained; approval never changes balances |
+| 2. Authentication and permissions | Controlled admin CLI; revocable sessions and ownership/permission checks; pending public applications and protected review. Account activation, staff invitations and recovery remain outstanding. See authentication and registration operations | Controlled initial admin creation; member registration; staff invitation; protected sessions, logout and recovery; per-person permissions; member ownership checks; negative Member/Staff/Finance/Admin tests; no self-escalation or last-admin lockout |
+| 3. Registration and plan workflows | Persisted pending public applications, duplicate/privacy protection, Staff/Admin search/pagination and recorded status history. Fee verification and activation remain disabled; plan terms/history/scheduling remain outstanding | Fee verified separately from savings; account activation distinct from plan approval; approved plan terms snapshotted; rejected requests retained; approval never changes balances |
 | 3. Financial integrity | Decimal fields and pending-only exclusion exist. API approval/reversal workflows now return unconfigured; underlying legacy services still need immutable reversal and transactional verification work. Contribution actors come from sessions; totals still mix currencies | Immutable linked ledger entries; transactional verification; idempotency and concurrency tests; authenticated actors; currency-specific totals; fee/subscription separation; duplicate/rejected/reversed flows and reconciliation agree with ledger |
 | 4. Communications and administration | Browser login/logout is connected; role workspaces are protected and unconnected business screens show unavailable states | In-app notifications, provider-backed email, receipts, support tickets, content approval/versioning, consent-aware campaigns, safe retries, reports/exports, append-only audit and individual permissions |
 | 4. Backup and recovery | Local PostgreSQL dump/restore drill is part of Phase 1; production backup centre is still outstanding | Approved recovery point/time targets and retention; encrypted separate storage; schedules/manual backups; verification, access control, failure alerts and regular restore drills |
@@ -55,10 +55,14 @@ stabilisation milestone. No production deployment or paid services are requested
    per-person overrides, member ownership, audited security changes and a
    controlled bootstrap CLI are implemented. Review operational permissions
    before rollout; see [authentication operations](authentication-operations.md).
-4. Implement pending self-registration, verified fee records and approved
-   activation conditions. Keep passwords and token material out of logs and
-   responses; test enumeration, throttling, expiry and logout revocation.
-5. Version approved plans, record accepted terms and separate plan requests
+4. Pending public applications and permission-protected Staff/Admin review are
+   implemented; see [registration operations](registration-operations.md).
+   Duplicate submissions receive a uniform public acknowledgement. No account,
+   active membership or payment is created. Approved identity, fee verification
+   and activation policy is still required before enabling those workflows.
+5. Optional category expressions of interest are separate from membership
+   applications; see [savings interest](savings-interest.md). No approved plan
+   terms or acceptance are configured. Version approved plans, record accepted terms and separate plan requests
    from member applications. Require configured amounts and schedules before
    publication. Keep original requests and review reasons.
 6. Introduce an append-only money ledger, linked reversals/adjustments and

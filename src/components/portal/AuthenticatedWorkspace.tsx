@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { navigation, screenTitle, type Role } from '@/lib/portal/navigation';
 import { OrganisationOverview, MembersDirectory } from './AdminDataScreens';
+import { ApplicationScreens } from './ApplicationScreens';
 
 function SessionGate() {
   const auth = useAuth();
@@ -44,7 +45,7 @@ export function AuthenticatedWorkspace({ role, screen }: { role: Role; screen: s
       <main id="portal-main" className="mx-auto max-w-[1500px] px-5 py-8 md:px-10 md:py-10">
         {error && <p role="alert" className="mb-5 text-sm text-destructive">{error}</p>}
         <div className="mb-8"><p className="mb-2 text-xs font-semibold uppercase text-portal-accent">{roleName} workspace</p><h1 className="text-3xl font-semibold leading-tight md:text-4xl">{screenTitle(role, screen)}</h1></div>
-        {role === 'admin' && screen === 'dashboard' ? <OrganisationOverview /> : role === 'admin' && screen === 'members' ? <MembersDirectory /> : <section className="rounded-md border border-border bg-card p-7" role="status"><h2 className="text-xl font-semibold">This screen is not available yet</h2><p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">You are signed in. This part of your workspace is not connected yet. Please contact the office for assistance.</p></section>}
+        {(role === 'admin' || role === 'staff') && screen === 'registrations' ? <ApplicationScreens /> : role === 'admin' && screen === 'dashboard' ? <OrganisationOverview /> : role === 'admin' && screen === 'members' ? <MembersDirectory /> : <section className="rounded-md border border-border bg-card p-7" role="status"><h2 className="text-xl font-semibold">This screen is not available yet</h2><p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">You are signed in. This part of your workspace is not connected yet. Please contact the office for assistance.</p></section>}
       </main><footer className="px-5 pb-8 text-xs text-muted-foreground md:px-10">i-Save · Office payments only</footer>
     </div>
   </div>;

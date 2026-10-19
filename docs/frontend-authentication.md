@@ -51,7 +51,9 @@ screens show **This screen is not available yet**, retaining navigation
 without sample balances, member names, transactions, approvals or success toasts.
 Backend CRUD alone does not establish a complete UI workflow or approved rules.
 
-Registration, recovery, email verification and initial password setup also show
+Registration now submits pending applications without creating login accounts;
+see [registration operations](registration-operations.md). Recovery, email
+verification and initial password setup still show
 unavailable states, without accepting fake submissions or promising email.
 Older `/portal/member/login` and related account URLs redirect to the public
 account pages. Unsupported business rules remain unconfigured.
@@ -88,7 +90,7 @@ artifacts are ignored by Git.
   canonical workspace/unknown-role checks. The upstream TestClient warning remains.
 
 No test accounts/business rows were inserted into the existing database. Nothing
-was pushed or merged. Invitations/recovery, registration, business UI integration
+was pushed or merged. Invitations/recovery, account activation, business UI integration
 and unresolved financial/activation rules remain outstanding. See the earlier
 [backend activation record](authentication-activation.md).
 

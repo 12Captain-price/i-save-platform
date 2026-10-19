@@ -3,7 +3,8 @@ import { Mail, Phone, MapPin, Globe, ArrowRight, Mail as MailIcon } from 'lucide
 import { SiteHeader, NAV } from './SiteHeader';
 import { Logo } from './Logo';
 import { Button } from '@/components/ui/button';
-import { contactInfo, siteContent } from '@/lib/portal/demo';
+import { siteContent } from '@/lib/portal/demo';
+import { publicContactEntries } from '@/lib/public-contact';
 
 const zpyfLogo = '/images/zpyf-logo.png';
 
@@ -69,7 +70,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
 export function ContactCard() {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
-      {contactInfo.map(c => (
+      {publicContactEntries.map(c => (
         <div key={c.id} className="rounded-md border border-border bg-card p-5">
           <div className="flex items-center gap-3 min-w-0">
             {c.type === 'email' && <Mail className="h-5 w-5 shrink-0 text-portal-accent" />}
@@ -78,7 +79,7 @@ export function ContactCard() {
             {c.type === 'web' && <Globe className="h-5 w-5 shrink-0 text-portal-accent" />}
             <div className="min-w-0">
               <p className="text-xs font-semibold text-muted-foreground uppercase truncate">{c.label}</p>
-              <p className="text-sm text-foreground break-words">{c.value}</p>
+              <p className="text-sm text-foreground break-words">{c.href ? <a href={c.href} className="rounded text-primary underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{c.value}</a> : c.value}</p>
             </div>
           </div>
         </div>

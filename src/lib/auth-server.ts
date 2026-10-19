@@ -33,7 +33,10 @@ async function upstream(path: string, init: RequestInit = {}) {
 async function adminRead(request: Request, url: URL) {
   if (request.method !== 'GET') return message('Method not allowed.', 405);
   const target = url.pathname === '/api/admin/overview' ? '/api/v1/admin/overview' :
-    url.pathname === '/api/admin/members' ? '/api/v1/members/page' : null;
+    url.pathname === '/api/admin/members' ? '/api/v1/members/page' :
+    url.pathname === '/api/review/applications' ? '/api/v1/applications/page' :
+    /^\/api\/review\/applications\/[1-9][0-9]{0,9}$/.test(url.pathname) ?
+      `/api/v1/applications/review/${url.pathname.split('/').at(-1)}` : null;
   if (!target) return message('Not found.', 404);
   const token = tokenFrom(request);
   if (!token) return expired(request);
@@ -69,9 +72,26 @@ async function identity(token: string): Promise<Identity | null> {
 export async function handleAuthentication(request: Request): Promise<Response | null> {
   const url = new URL(request.url);
   const path = url.pathname;
-  if (!path.startsWith('/api/auth/') && !path.startsWith('/api/admin/') && !/^\/portal(?:\/|$)/.test(path)) return null;
+  if (path !== '/api/registration' && !path.startsWith('/api/review/') && !path.startsWith('/api/auth/') && !path.startsWith('/api/admin/') && !/^\/portal(?:\/|$)/.test(path)) return null;
   try {
-    if (path.startsWith('/api/admin/')) return await adminRead(request, url);
+    if (path === '/api/registration') {
+      if (request.method !== 'POST') return message('Method not allowed.', 405);
+      if (request.headers.get('origin') !== url.origin || request.headers.get('x-isave-request') !== '1') return message('Reload the page and try again.', 403);
+      if (!request.headers.get('content-type')?.startsWith('application/json')) return message('Check your application details.', 400);
+      const body = await request.text();
+      if (body.length > 8192) return message('Check your application details.', 400);
+      let parsed: unknown;
+      try { parsed = JSON.parse(body); } catch { return message('Check your application details.', 400); }
+      const response = await fetch(new URL('/api/v1/registration', process.env['AUTH_API_ORIGIN'] ?? 'http://127.0.0.1:8000'), {
+        method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(parsed),
+        cache:'no-store', redirect:'error', signal:AbortSignal.timeout(10_000),
+      });
+      if (response.status === 202) return Response.json({ received:true }, { status:202, headers });
+      return message(response.status === 429 ? 'Too many submissions. Please try again later.' :
+        response.status === 400 ? 'Check your application details and try again.' : 'Unable to submit your application. Please try again.',
+        [400,429].includes(response.status) ? response.status : 503);
+    }
+    if (path.startsWith('/api/admin/') || path.startsWith('/api/review/')) return await adminRead(request, url);
     if (path.startsWith('/api/auth/')) {
       const action = path.slice('/api/auth/'.length);
       if (!['login', 'me', 'logout'].includes(action)) return message('Not found.', 404);

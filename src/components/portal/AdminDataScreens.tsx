@@ -11,7 +11,7 @@ type MemberPage = { items: Member[]; total: number; skip: number; limit: number 
 type Result<T> = { status: 'loading' | 'ready'; data: T | null; error: string; denied: boolean };
 const count = (value: number) => value.toLocaleString('en');
 
-function useRecords<T>(url: string) {
+export function useRecords<T>(url: string) {
   const { refresh } = useAuth();
   const [revision, setRevision] = useState(0);
   const [result, setResult] = useState<Result<T>>({ status: 'loading', data: null, error: '', denied: false });
@@ -42,7 +42,7 @@ function useRecords<T>(url: string) {
   return { ...result, reload: () => setRevision(v => v + 1) };
 }
 
-function Feedback({ error, denied, reload }: { error: string; denied: boolean; reload: () => void }) {
+export function Feedback({ error, denied, reload }: { error: string; denied: boolean; reload: () => void }) {
   return <section role="alert" className="rounded-xl border border-border bg-card p-6 sm:p-8"><h2 className="text-xl font-semibold">{denied ? 'Access denied' : 'Unable to load records'}</h2><p className="mt-2 text-sm text-muted-foreground">{error}</p>{!denied && <Button variant="outline" className="mt-5" onClick={reload}>Try again</Button>}</section>;
 }
 

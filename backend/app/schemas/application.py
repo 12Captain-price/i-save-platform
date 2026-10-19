@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Optional, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 from typing_extensions import Annotated
 
 from app.schemas.common import Email, TimestampSchema
@@ -35,7 +35,56 @@ class ApplicationUpdate(BaseModel):
 
 class ApplicationRead(ApplicationBase, TimestampSchema):
     id: int
+    submitted_at: datetime
     reviewed_by: Optional[int] = None
     reviewed_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PublicRegistration(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    first_name: Annotated[str, StringConstraints(min_length=1, max_length=100)]
+    last_name: Annotated[str, StringConstraints(min_length=1, max_length=100)]
+    email: Email
+    phone: Annotated[Optional[str], Field(max_length=50)] = None
+    address: Annotated[Optional[str], Field(max_length=255)] = None
+    reason: Annotated[Optional[str], Field(max_length=1000)] = None
+    preferred_category: Optional[Literal['asset','holiday','emergency','retrenchment','education']] = None
+    interest_notice_version: Annotated[Optional[str], Field(max_length=80)] = None
+
+    @model_validator(mode='after')
+    def validate_interest(self):
+        from app.registration_options import OPTIONS
+        if self.preferred_category is not None:
+            if self.interest_notice_version != OPTIONS['version']:
+                raise ValueError('Reload the current interest information before submitting')
+        elif self.interest_notice_version is not None:
+            raise ValueError('Choose a category before supplying an information version')
+        return self
+
+
+class SavingsInterestRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    category: str
+    category_label: str
+    purpose: str
+    notice_version: str
+    notice_text: str
+    recorded_at: datetime
+
+
+class ApplicationEventRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    status: str
+    note: Optional[str]
+    actor_user_id: Optional[int]
+    recorded_at: datetime
+
+
+class ApplicationDetail(ApplicationRead):
+    submitted_at: datetime
+    rejection_reason: Optional[str]
+    history: list[ApplicationEventRead]
+    savings_interest: Optional[SavingsInterestRead] = None

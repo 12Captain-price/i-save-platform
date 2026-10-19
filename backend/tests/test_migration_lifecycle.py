@@ -46,7 +46,7 @@ def create_legacy_schema(database):
 
     original = MetaData()
     for table in Base.metadata.sorted_tables:
-        if table.name in {"auth_sessions", "user_permissions", "login_throttles"}:
+        if table.name in {"auth_sessions", "user_permissions", "login_throttles", "registration_submissions", "application_events", "savings_interests"}:
             continue
         table.to_metadata(original)
     for name in ("created_at", "updated_at"):
@@ -242,3 +242,79 @@ def test_concurrent_admin_changes_preserve_an_active_admin(migration_database):
     assert outcomes == [200, 403]
     with Session(database) as db:
         assert db.query(User).filter(User.is_active.is_(True)).count() == 1
+
+
+def test_registration_upgrade_preserves_legacy_and_records_snapshot(migration_database):
+    from alembic import command
+    from app.migrations import migration_config
+    from sqlalchemy.orm import Session
+    from app.models.application import MembershipApplication, ApplicationEvent
+    database = migration_database
+    with database.connect() as connection:
+        command.upgrade(migration_config(connection), '0003_authentication')
+    with Session(database) as db:
+        record = MembershipApplication(application_number='LEGACY',first_name='Old',last_name='Record',email='old@example.test',status='Rejected',rejection_reason='Historical reason')
+        db.add(record); db.commit()
+        old = {col.name:getattr(record,col.name) for col in record.__table__.columns}
+    upgrade(database); upgrade(database)
+    require_current_schema(database)
+    with Session(database) as db:
+        record = db.query(MembershipApplication).one()
+        assert {col.name:getattr(record,col.name) for col in record.__table__.columns} == old
+        event = db.query(ApplicationEvent).one()
+        assert event.status == 'Rejected' and 'earlier transitions are unavailable' in event.note
+    with database.connect() as connection:
+        command.downgrade(migration_config(connection), '0004_pending_registration')
+    with pytest.raises(RuntimeError, match='history is retained'), database.connect() as connection:
+        command.downgrade(migration_config(connection), '0003_authentication')
+    upgrade(database)
+    require_current_schema(database)
+
+
+def test_concurrent_registration_creates_one_pending_application(migration_database):
+    from concurrent.futures import ThreadPoolExecutor
+    from sqlalchemy.orm import Session
+    from starlette.requests import Request
+    from app.routers.registration import register
+    from app.schemas.application import PublicRegistration
+    from app.models.application import MembershipApplication, ApplicationEvent
+    database = migration_database
+    upgrade(database)
+    def submit():
+        with Session(database) as db:
+            return register(PublicRegistration(first_name='Concurrent',last_name='Synthetic',email='race@example.test'),
+                Request({'type':'http','client':('127.0.0.1',1)}),db)
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        results = list(executor.map(lambda _:submit(),range(4)))
+    assert all(result == results[0] for result in results)
+    with Session(database) as db:
+        assert db.query(MembershipApplication).count() == 1
+        assert db.query(ApplicationEvent).count() == 1
+
+
+def test_interest_migration_retains_registration_and_guards_history(migration_database):
+    from app.migrations import migration_config
+    from alembic import command
+    from sqlalchemy.orm import Session
+    from app.models.application import MembershipApplication, SavingsInterest
+    from app.routers.registration import register
+    from app.schemas.application import PublicRegistration
+    from app.registration_options import OPTIONS
+    from starlette.requests import Request
+    database=migration_database
+    with database.connect() as connection:
+        command.upgrade(migration_config(connection),'0004_pending_registration')
+    with Session(database) as db:
+        original=MembershipApplication(application_number='PRE-INTEREST',first_name='Legacy',last_name='Synthetic',email='legacy-interest@example.test')
+        db.add(original);db.commit()
+        saved={col.name:getattr(original,col.name) for col in original.__table__.columns}
+    upgrade(database);upgrade(database);require_current_schema(database)
+    with Session(database) as db:
+        original=db.query(MembershipApplication).one()
+        assert {col.name:getattr(original,col.name) for col in original.__table__.columns}==saved
+        assert db.query(SavingsInterest).count()==0
+        register(PublicRegistration(first_name='Interest',last_name='Synthetic',email='new-interest@example.test',preferred_category='asset',interest_notice_version=OPTIONS['version']),Request({'type':'http','client':('127.0.0.1',1)}),db)
+        assert db.query(SavingsInterest).count()==1
+    with pytest.raises(RuntimeError,match='interests are retained'), database.connect() as connection:
+        command.downgrade(migration_config(connection),'0004_pending_registration')
+    require_current_schema(database)

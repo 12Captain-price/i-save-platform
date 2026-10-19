@@ -2,8 +2,11 @@
 from app.config import Settings, get_settings
 
 
-def test_settings_defaults():
-    settings = Settings()
+def test_settings_defaults(monkeypatch):
+    # Test defaults independently of the Docker deployment environment.
+    for name in Settings.model_fields:
+        monkeypatch.delenv(name.upper(), raising=False)
+    settings = Settings(_env_file=None)
     assert settings.app_name == "i-Save Backend"
     assert settings.app_env == "development"
     assert settings.app_debug is True

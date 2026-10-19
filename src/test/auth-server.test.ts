@@ -92,3 +92,18 @@ it.each([401,403,503])('preserves admin read failure %s without returning record
   expect(await response?.text()).not.toContain('sensitive details');
 });
 
+
+it('protects public registration CSRF and forwards neither cookies nor caller identities', async()=>{
+ const fetcher=vi.fn().mockResolvedValue(new Response(null,{status:202}));vi.stubGlobal('fetch',fetcher);
+ expect((await handleAuthentication(request('/api/registration',{...post,headers:{...post.headers,origin:'https://attacker.test'}})))?.status).toBe(403);
+ expect(fetcher).not.toHaveBeenCalled();
+ const response=await handleAuthentication(request('/api/registration',{...post,body:JSON.stringify({first_name:'Synthetic',last_name:'Test',email:'test@example.test'}),headers:{...post.headers,cookie:`isave_session=${token}`}}));
+ expect(response?.status).toBe(202);expect(await response?.json()).toEqual({received:true});
+ expect(fetcher.mock.calls[0]![1].headers).not.toHaveProperty('Authorization');expect(fetcher.mock.calls[0]![1].headers).not.toHaveProperty('cookie');
+});
+it('uses the authenticated backend for protected application detail reads',async()=>{
+ const fetcher=vi.fn().mockResolvedValue(new Response(null,{status:403}));vi.stubGlobal('fetch',fetcher);
+ expect((await handleAuthentication(request('/api/review/applications/12',{headers:{cookie:`isave_session=${token}`}})))?.status).toBe(403);
+ expect(new URL(fetcher.mock.calls[0]![0]).pathname).toBe('/api/v1/applications/review/12');
+ expect(fetcher.mock.calls[0]![1].headers.Authorization).toBe(`Bearer ${token}`);
+});

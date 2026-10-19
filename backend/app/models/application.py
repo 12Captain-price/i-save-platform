@@ -40,3 +40,35 @@ class MembershipApplication(Base, TimestampMixin):
 
     def __repr__(self) -> str:  # pragma: no cover - debugging aid
         return f"<MembershipApplication {self.application_number!r}>"
+
+
+class RegistrationSubmission(Base):
+    """Atomic email deduplication; no public application/account lookup."""
+    __tablename__ = "registration_submissions"
+    email_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    application_id: Mapped[int | None] = mapped_column(
+        ForeignKey("membership_applications.id", ondelete="SET NULL"), nullable=True)
+
+
+class ApplicationEvent(Base):
+    __tablename__ = "application_events"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    application_id: Mapped[int] = mapped_column(
+        ForeignKey("membership_applications.id", ondelete="CASCADE"), index=True)
+    status: Mapped[str] = mapped_column(String(50))
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class SavingsInterest(Base):
+    """Separate interest record, never a plan application/enrolment or acceptance."""
+    __tablename__ = "savings_interests"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    application_id: Mapped[int] = mapped_column(ForeignKey("membership_applications.id", ondelete="CASCADE"), unique=True, index=True)
+    category: Mapped[str] = mapped_column(String(30))
+    category_label: Mapped[str] = mapped_column(String(50))
+    purpose: Mapped[str] = mapped_column(Text)
+    notice_version: Mapped[str] = mapped_column(String(80))
+    notice_text: Mapped[str] = mapped_column(Text)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

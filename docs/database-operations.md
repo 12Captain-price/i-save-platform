@@ -32,6 +32,12 @@ new backend. Existing revision-0002 databases use upgrade only, never baseline.
 
 ## Existing untracked Docker database
 
+Revision `0004_pending_registration` adds duplicate reservations and application
+history without changing original business rows. Back up before upgrade; see
+[registration operations](registration-operations.md) for its restore rehearsal,
+local activation and rollback limits. The reviewed legacy baseline still compares
+the original 14-table layout; it excludes all later migration-owned tables.
+
 Use a maintenance window with all application writers stopped. Inspect existing
 changes before applying code updates. Back up **before** recording history.
 The commands below never reset data. The DB service stays running.

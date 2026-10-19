@@ -30,6 +30,7 @@ from app.routers.users import router as users_router
 from app.routers.verifications import router as verifications_router
 from app.routers.auth import router as auth_router
 from app.routers.admin import router as admin_router
+from app.routers.registration import router as registration_router
 
 settings = get_settings()
 
@@ -104,6 +105,7 @@ async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError) -> JS
 app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(admin_router)
+app.include_router(registration_router)
 app.include_router(members_router)
 app.include_router(users_router)
 app.include_router(roles_router)
