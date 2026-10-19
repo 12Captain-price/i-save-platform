@@ -1,0 +1,29 @@
+# Docker context for the backend (FastAPI) image.
+# Never copy secrets, local state, or test caches into the image.
+
+.env
+.venv
+venv/
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+*.sqlite-wal
+*.sqlite-shm
+data/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage/
+htmlcov/
+.git
+.gitignore
+.dockerignore
+Dockerfile*
+README.md
+.DS_Store

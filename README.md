@@ -24,3 +24,33 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## Docker
+
+The whole stack (frontend, backend, PostgreSQL) runs with Docker Compose — no Node.js or Python needed on the host:
+
+```sh
+cp .env.example .env   # optional; the committed .env.example contains placeholders only
+docker compose up -d
+```
+
+- Frontend (TanStack Start / Nitro SSR): http://localhost:3000
+- Backend API (FastAPI): http://127.0.0.1:8000 (bound to localhost only)
+- PostgreSQL: 127.0.0.1:5432 (bound to localhost only); data persists in the `i_save_postgres_data` volume
+
+The backend starts only after PostgreSQL passes its health check. No real credentials are committed — secrets live in `.env` (never committed) or compose environment variables.
+
+Backend commands (run against the Compose service):
+
+```sh
+# Test suite (runs against SQLite defaults, so DATABASE_URL/SECRET_KEY are unset):
+docker compose run --rm backend sh -c 'unset DATABASE_URL SECRET_KEY; pytest -q'
+
+# Apply Alembic migrations to the PostgreSQL service:
+docker compose run --rm backend alembic -c alembic.ini upgrade head
+
+# Stop the stack:
+docker compose down
+```
+
+Local development is unchanged: the existing SQLite setup works without Docker.

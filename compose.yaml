@@ -1,0 +1,90 @@
+# i-Save Docker Compose stack
+#
+# Services:
+#   frontend  - TanStack Start / Nitro SSR app (http://localhost:3000)
+#   backend   - FastAPI API (http://localhost:8000, bound to localhost only)
+#   db        - PostgreSQL (localhost:5432, bound to localhost only)
+#
+# Usage:
+#   cp .env.example .env        # adjust values if desired
+#   docker compose up -d
+#
+# Notes:
+#   - The frontend is a standalone SSR app; browser code does not call the
+#     backend, so no backend hostname is baked into frontend code.
+#   - The backend connects to PostgreSQL via DATABASE_URL (environment variable,
+#     never hardcoded credentials). Local SQLite development is unchanged.
+#   - PostgreSQL is published to localhost only so it is reachable from the
+#     host for local development tooling.
+#   - Startup order: backend starts only after PostgreSQL passes its health check.
+#   - Database data persists in the named volume pg_data; nothing is dropped
+#     or overwritten automatically (no destructive migrations on startup).
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-isave_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-isave_password_change_me}
+      POSTGRES_DB: ${POSTGRES_DB:-isave}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      # Bound to localhost only — not exposed to the public network.
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-isave_user} -d ${POSTGRES_DB:-isave} || pg_isready"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Connect to PostgreSQL via environment variable. Defaults are local-dev
+      # placeholders only — override them in .env for anything beyond local dev.
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://isave_user:isave_password_change_me@db:5432/isave}
+      APP_ENV: ${APP_ENV:-development}
+      APP_DEBUG: ${APP_DEBUG:-true}
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me-do-not-use-in-production}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+    ports:
+      # Bound to localhost only (API docs / direct API access from the host).
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health').status == 200 else 1)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      HOST: ${HOST:-0.0.0.0}
+      PORT: ${PORT:-3000}
+    ports:
+      - "3000:3000"
+    # The frontend is a standalone SSR app (no server-to-backend calls at
+    # runtime), so it does not depend on the backend container.
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then((r) => { if (!r.ok) process.exit(1) }).catch((e) => { process.exit(1) })"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  pg_data:
+    name: i_save_postgres_data

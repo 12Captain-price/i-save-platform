@@ -1,0 +1,39 @@
+# Docker context for the frontend (Nitro/TanStack Start) image.
+# Keep the build context small and never copy secrets or local state into the image.
+
+node_modules
+.output
+.env
+.env.*
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+*.sqlite-wal
+*.sqlite-shm
+.git
+.gitignore
+.dockerignore
+Dockerfile*
+compose.yaml
+*.md
+bun.lock
+bunfig.toml
+!package.json
+!package-lock.json
+npm-debug.log*
+.prettiercache
+.vite
+.tanstack
+.nitro
+.vinxi
+.wrangler
+coverage/
+.idea
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+
+# The backend has its own build context; exclude it from the frontend image.
+backend/
