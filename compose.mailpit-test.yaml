@@ -1,0 +1,19 @@
+# Combine only with compose.auth-test.yaml; no office volume is mounted.
+services:
+  mailpit:
+    image: axllent/mailpit:v1.31.6
+    environment:
+      MP_MAX_MESSAGES: 100
+    ports:
+      - '127.0.0.1:18025:8025'
+      - '127.0.0.1:11025:1025'
+    networks: [local_mail]
+  backend:
+    environment:
+      INVITATION_DELIVERY: mailpit
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      PASSWORD_SETUP_FRONTEND_URL: http://127.0.0.1:13000
+    networks: [default, local_mail]
+networks:
+  local_mail: {}

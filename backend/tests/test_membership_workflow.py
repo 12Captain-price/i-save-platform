@@ -143,12 +143,15 @@ def test_invitation_delivery_evidence_retry_expiry_and_single_use(client,db,acco
             return 'synthetic-provider-evidence'
     provider=Provider();app.dependency_overrides[get_invitation_mailer]=lambda:provider
     assert post(client,auth,pending,'invitation',key).status_code==503
-    assert db.query(Invitation).count()==0
+    failed=db.query(Invitation).one()
+    assert failed.revoked_at and failed.delivery_state=='Unconfirmed - not retried'
+    assert post(client,auth,pending,'invitation',key).status_code==409 and provider.calls==1
+    key={'request_key':str(uuid4())} # Explicit replacement, never automatic resend.
     provider.fail=False
     response=post(client,auth,pending,'invitation',key)
     assert response.status_code==200 and provider.token not in response.text
     assert post(client,auth,pending,'invitation',key).status_code==200 and provider.calls==2
-    row=db.query(Invitation).one();assert row.token_hash==digest(provider.token) and row.provider_message_id
+    row=db.query(Invitation).filter_by(request_key=key['request_key']).one();assert row.token_hash==digest(provider.token) and row.provider_message_id
     token=provider.token
     row.expires_at=now()-timedelta(seconds=1);db.commit()
     assert client.post('/api/v1/auth/setup-password',json={'token':token,'password':'Synthetic-only-12345!'}).status_code==400

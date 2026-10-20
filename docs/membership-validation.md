@@ -5,6 +5,15 @@ Implemented and activated locally, without pushing or merging. See
 
 ## Automated validation
 
+These counts describe the earlier fee-gated activation revision, not a fresh
+full-suite run after Mailpit integration. See the [Mailpit suite-count
+clarification](local-invitation-email.md#backend-suite-count-clarification) for
+the later targeted 141-test run and guided replacement verification.
+The subsequent [full backend regression](local-invitation-email.md#full-backend-regression-follow-up--20-october-2026)
+passed **all 256 current tests**, with zero failures/errors/skips and original
+exit status 0, against isolated PostgreSQL. Historical counts below are retained
+as evidence for their original revisions.
+
 - Complete backend suite: **240 passed**, using a dedicated `isave_test_*`
   PostgreSQL database. Migration lifecycle tests also exercised SQLite and
   temporary PostgreSQL databases, fresh/repeated upgrades, legacy preservation,

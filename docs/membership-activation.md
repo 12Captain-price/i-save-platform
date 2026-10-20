@@ -56,6 +56,11 @@ refunds remain unavailable. Refresh after an uncertain response before retrying.
 
 ## Password setup and delivery boundary
 
+Development can now opt into [local Mailpit testing](local-invitation-email.md).
+The unavailable-provider description below remains the external/production
+boundary. Invitation attempts are now reserved before SMTP; uncertain attempts
+are retained and never automatically resent, as documented in the local runbook.
+
 Only a SHA-256 hash of the 256-bit random invitation token is stored. It expires
 after 60 minutes by default (`PASSWORD_SETUP_EXPIRE_MINUTES`, bounded 5–1440), is
 single-use, and is revoked when a replacement is issued. Consumption locks the
@@ -80,8 +85,10 @@ The provider seam is tested with synthetic acceptance/failure evidence; no real
 email was delivered. A successful provider acceptance records its message reference
 and is not an inbox-delivery guarantee. Retrying the same invitation request key
 does not repeat approval, activation, payment or provider acceptance. Unknown
-provider failures roll back invitation issuance and leave membership/payment
-unchanged. An approved provider must handle uncertain delivery with idempotency.
+delivery attempts are now retained and never automatically resent. Failed attempts
+are revoked; an explicit replacement uses a new request key and invalidates older
+links. Membership/payment remain unchanged. See the local Mailpit runbook for
+the durable pre-send reservation and SMTP uncertainty boundary.
 
 ## Policy limits
 

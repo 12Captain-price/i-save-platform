@@ -17,6 +17,7 @@ node_modules
 .dockerignore
 Dockerfile*
 compose.yaml
+compose.*.yaml
 *.md
 bun.lock
 bunfig.toml

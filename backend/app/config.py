@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     secret_key: str = "dev-secret-change-me"
     access_token_expire_minutes: int = Field(default=30, ge=1, le=1440)
     password_setup_expire_minutes: int = Field(default=60,ge=5,le=1440)
+    invitation_delivery: str = 'disabled'
+    smtp_host: str = 'mailpit'
+    smtp_port: int = Field(default=1025,ge=1,le=65535)
+    smtp_from: str = 'isave-local@example.test'
+    smtp_timeout_seconds: int = Field(default=5,ge=1,le=15)
+    password_setup_frontend_url: str = 'http://localhost:3000'
 
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 

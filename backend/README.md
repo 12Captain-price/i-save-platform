@@ -1,5 +1,9 @@
 # i-Save Backend (Phase 1: Foundation)
 
+Opt-in development invitation capture is documented in
+[local Mailpit testing](../docs/local-invitation-email.md). Production sending
+remains disabled; no migration is required for the SMTP adapter.
+
 The [fee-gated membership workflow](../docs/membership-activation.md) documents
 the agreed US$20 fee gate, separate permissions/actions, activation, next-month
 subscription and single-use setup invitations. Email delivery remains unavailable.

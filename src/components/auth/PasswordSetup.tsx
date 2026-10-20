@@ -14,9 +14,14 @@ export function PasswordSetup() {
   const [busy,setBusy]=useState(false);
   const [done,setDone]=useState(false);
   useEffect(()=>{
-    const value=new URLSearchParams(window.location.hash.slice(1)).get('token')??'';
-    window.history.replaceState(null,'',window.location.pathname);
-    setToken(/^[A-Za-z0-9_-]{43}$/.test(value)?value:'');setLoaded(true);
+    const read=()=>{
+      const value=new URLSearchParams(window.location.hash.slice(1)).get('token')??'';
+      window.history.replaceState(null,'',window.location.pathname);
+      setToken(/^[A-Za-z0-9_-]{43}$/.test(value)?value:'');setLoaded(true);
+      setDone(false);setError('');setPassword('');setConfirmation('');
+    };
+    read();window.addEventListener('hashchange',read);
+    return ()=>window.removeEventListener('hashchange',read);
   },[]);
   return <PublicLayout><div className="mx-auto max-w-xl px-5 py-12 sm:py-20"><section className="space-y-5 rounded-xl border border-primary/25 bg-card p-5 sm:p-8"><h1 className="text-2xl font-semibold">Set your password</h1>{done ? <div role="status"><h2 className="font-semibold text-primary">Password set</h2><p className="mt-3 text-sm">You can now log in. You have not been signed in automatically.</p><Button asChild className="mt-5"><Link to="/login">Log in</Link></Button></div> : !loaded ? <p role="status">Checking setup link...</p> : !token ? <p role="alert" className="text-sm">A valid private invitation link is required. Contact the office for help. No password has been changed.</p> : <form className="space-y-5" onSubmit={async e=>{
     e.preventDefault();setError('');

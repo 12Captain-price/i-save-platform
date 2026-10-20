@@ -40,7 +40,9 @@ def commit(db):
 
 @router.get('/applications/{application_id}',dependencies=[Depends(require('applications:read'))])
 def state(application_id:int,actor:User=Depends(current_user),db:Session=Depends(get_db),mailer=Depends(get_invitation_mailer)):
-    return service.workflow(db,actor,application_id,mailer.available)
+    result=service.workflow(db,actor,application_id,mailer.available)
+    result['delivery']['mode']=getattr(mailer,'mode','unavailable')
+    return result
 
 
 @router.post('/applications/{application_id}/payment')
@@ -70,16 +72,33 @@ def invitation(application_id:int,body:InvitationRequest,actor:User=Depends(prot
     old=db.query(Invitation).filter_by(request_key=str(body.request_key)).one_or_none()
     if old:
         if old.application_id!=application_id:raise APIError(409,'conflict','Invitation request key is already used')
+        if old.delivery_state not in {'Provider accepted','Mailpit accepted'}:
+            raise APIError(409,'delivery_not_retried','This attempt is unconfirmed and will not be resent. Refresh and explicitly request a replacement.')
         return {'delivery':old.delivery_state,'provider_message_id':old.provider_message_id}
     token,row=service.create_invitation(db,actor,application_id,body.request_key)
+    row.delivery_state='Sending'
+    # Reserve the request key durably BEFORE the external side effect. A crash
+    # or uncertain SMTP outcome must never cause automatic resend on retry.
+    token_hash=row.token_hash
+    commit(db)
     try:
         proof=mailer.send(recipient=db.get(User,row.user_id).email,token=token,request_key=str(body.request_key))
         if not isinstance(proof,str) or not proof.strip() or len(proof)>255 or token in proof:raise RuntimeError('No safe provider acceptance evidence')
     except Exception:
-        db.rollback();raise APIError(503,'delivery_unconfirmed','Invitation delivery could not be confirmed. Approval and payment remain unchanged; retry delivery safely.')
-    row.provider_message_id=proof;row.delivery_state='Provider accepted'
+        db.rollback()
+        row=db.get(Invitation,token_hash)
+        row.delivery_state='Unconfirmed - not retried';row.revoked_at=service.now()
+        app=service.lock_application(db,application_id)
+        service.event(db,actor,'password_setup_invitation_delivery_unconfirmed',app,'Delivery unconfirmed; attempt revoked and will not be resent automatically. No membership/payment change.')
+        commit(db)
+        raise APIError(503,'delivery_unconfirmed','Delivery unconfirmed. Refresh and explicitly request a replacement; this attempt will not be resent.')
+    # Another explicit replacement may have revoked this attempt while SMTP
+    # was running. Do not clear its revocation or reactivate an old token.
+    row=db.get(Invitation,token_hash);db.refresh(row)
+    local=getattr(mailer,'mode',None)=='mailpit'
+    row.provider_message_id=proof;row.delivery_state='Mailpit accepted' if local else 'Provider accepted'
     app=service.lock_application(db,application_id)
-    service.event(db,actor,'password_setup_invitation_delivery_accepted',app,'Email provider accepted the password setup invitation; inbox delivery is not guaranteed.',{'provider_message_id':proof})
+    service.event(db,actor,'password_setup_invitation_delivery_accepted',app,'Mailpit accepted a local test message; no external email delivery.' if local else 'Email provider accepted the password setup invitation; inbox delivery is not guaranteed.',{'provider_message_id':proof})
     commit(db);return {'delivery':row.delivery_state,'provider_message_id':proof}
 
 

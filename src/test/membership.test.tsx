@@ -3,7 +3,7 @@ import { afterEach,it,expect,vi } from 'vitest';
 import { MembershipReview,MemberFees } from '@/components/portal/MembershipReview';
 import { PasswordSetup } from '@/components/auth/PasswordSetup';
 const refresh=vi.hoisted(()=>vi.fn());
-vi.mock('@/components/auth/AuthProvider',()=>({useAuth:()=>({refresh,identity:{permissions:['registration-fees:record','registration-fees:verify','membership:approve','membership:activate']}})}));
+vi.mock('@/components/auth/AuthProvider',()=>({useAuth:()=>({refresh,identity:{permissions:['registration-fees:record','registration-fees:verify','membership:approve','membership:activate','invitations:issue']}})}));
 vi.mock('@/components/site/PublicLayout',()=>({PublicLayout:({children}:{children:React.ReactNode})=><div>{children}</div>}));
 vi.mock('@tanstack/react-router',()=>({Link:({children}:{children:React.ReactNode})=><span>{children}</span>}));
 afterEach(()=>vi.unstubAllGlobals());
@@ -14,6 +14,16 @@ it('keeps approval and acknowledgement disabled when backend prerequisites fail'
  expect(await screen.findByRole('button',{name:'Approve membership'})).toBeDisabled();
  expect(screen.getByRole('checkbox')).not.toBeChecked();expect(screen.getByRole('checkbox')).toBeDisabled();
  expect(fetcher).toHaveBeenCalledTimes(1);
+});
+it('labels local capture and requires an explicit replacement without repeating approval/payment',async()=>{
+ const fetcher=vi.fn().mockImplementation(async(_url:string,init?:RequestInit)=>init?.method==='POST'?Response.json({delivery:'Mailpit accepted'}):Response.json({...workflow,approval:{approved_by:'staff@example.test',approved_at:'2026-10-19T12:00:00Z',acknowledgement_version:'v1',acknowledgement_text:'Reviewed',activated_at:'2026-10-19T12:01:00Z',activated_by:'staff@example.test',subscription_start_month:'2026-11'},delivery:{mode:'mailpit',available:true,status:'Unconfirmed - not retried',provider_message_id:null,expires_at:null}}));vi.stubGlobal('fetch',fetcher);
+ render(<MembershipReview id={1} onChange={()=>{}}/>);
+ const button=await screen.findByRole('button',{name:'Capture password setup email locally'});
+ expect(screen.getByText(/Mailpit local testing:/)).toHaveTextContent('No external email delivery.');expect(button).toBeDisabled();
+ fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(button);
+ await waitFor(()=>expect(fetcher.mock.calls.some(call=>call[0]==='/api/membership/applications/1/invitation')).toBe(true));
+ const mutation=fetcher.mock.calls.find(call=>call[1]?.method==='POST')!;
+ expect(Object.keys(JSON.parse(mutation[1].body))).toEqual(['request_key']);
 });
 it('acknowledgement alone never posts payment and approval submits only the explicit acknowledgement',async()=>{
  const fetcher=vi.fn().mockImplementation(async(_url:string,init?:RequestInit)=>init?.method==='POST'?Response.json({completed:true}):Response.json({...workflow,can_approve:true,approval_blockers:[]}));vi.stubGlobal('fetch',fetcher);
@@ -34,4 +44,8 @@ it('removes setup fragment and preserves password on failure for safe retry',asy
  fireEvent.change(screen.getByLabelText('New password'),{target:{value:'Synthetic-only-123!'}});fireEvent.change(screen.getByLabelText('Confirm password'),{target:{value:'Synthetic-only-123!'}});
  fireEvent.click(screen.getByRole('button',{name:'Set password'}));await screen.findByText('Try again.');expect(screen.getByLabelText('New password')).toHaveValue('Synthetic-only-123!');expect(screen.queryByText('Password set')).not.toBeInTheDocument();
  fireEvent.click(screen.getByRole('button',{name:'Set password'}));await screen.findByText('Password set');
+ window.history.replaceState(null,'','/setup-password#token='+'y'.repeat(43));
+ fireEvent(window,new HashChangeEvent('hashchange'));
+ await screen.findByLabelText('New password');expect(window.location.hash).toBe('');
+ expect(screen.queryByText('Password set')).not.toBeInTheDocument();
 });
