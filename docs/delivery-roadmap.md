@@ -64,7 +64,10 @@ stabilisation milestone. No production deployment or paid services are requested
    and activation policy is still required before enabling those workflows.
 5. Optional category expressions of interest are separate from membership
    applications; see [savings interest](savings-interest.md). No approved plan
-   terms or acceptance are configured. Version approved plans, record accepted terms and separate plan requests
+   terms or acceptance are configured. Admin-only [draft savings-plan configuration](savings-plan-drafts.md)
+   now saves incomplete, unpublished versioned proposals with authenticated actor
+   audit. Drafts are excluded from offers and enrolment; no policy values are seeded.
+   Version approved plans, record accepted terms and separate plan requests
    from member applications. Require configured amounts and schedules before
    publication. Keep original requests and review reasons.
 6. Introduce an append-only money ledger, linked reversals/adjustments and

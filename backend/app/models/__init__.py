@@ -39,3 +39,4 @@ __all__ = [
     "user",
     "verification",
 ]
+import app.models.plan_draft

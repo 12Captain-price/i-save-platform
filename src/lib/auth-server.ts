@@ -98,12 +98,40 @@ async function membership(request: Request, url: URL) {
   return Response.json(await response.json(),{headers});
 }
 
-// The sole browser authentication boundary. Only explicitly listed authentication and read paths are proxied.
+async function planDrafts(request: Request, url: URL) {
+  const match = url.pathname.match(/^\/api\/admin\/plan-drafts(?:\/([1-9][0-9]{0,9}))?$/);
+  if (!match) return message('Not found.', 404);
+  const writing = request.method !== 'GET';
+  if (writing && request.method !== (match[1] ? 'PUT' : 'POST')) return message('Method not allowed.', 405);
+  const token = tokenFrom(request);
+  if (!token) return expired(request);
+  const endpoint = new URL(`/api/v1/admin/plan-drafts${match[1] ? `/${match[1]}` : ''}`, process.env['AUTH_API_ORIGIN'] ?? 'http://127.0.0.1:8000');
+  for (const [key, value] of url.searchParams) {
+    if (writing || match[1] || !['skip', 'limit'].includes(key) || endpoint.searchParams.has(key)) return message('Unsupported search parameters.', 400);
+    endpoint.searchParams.set(key, value);
+  }
+  let body: string | undefined;
+  if (writing) {
+    if (request.headers.get('origin') !== url.origin || request.headers.get('x-isave-request') !== '1') return message('Reload and try again.', 403);
+    if (!request.headers.get('content-type')?.startsWith('application/json')) return message('Check the draft fields.', 400);
+    body = await request.text();
+    if (body.length > 24000) return message('Draft text is too long.', 400);
+    try { JSON.parse(body); } catch { return message('Check the draft fields.', 400); }
+  }
+  const response = await fetch(endpoint, { method: request.method, headers: { Authorization: `Bearer ${token}`, ...(writing ? { 'Content-Type': 'application/json' } : {}) },
+    ...(body === undefined ? {} : { body }), cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(10_000) });
+  if (response.status === 401) return expired(request);
+  if (!response.ok) return message(response.status === 403 ? 'Administrator draft permission required.' : response.status === 409 ? 'Draft changed or conflicting request. Reload before saving.' : response.status === 400 ? 'Check the draft fields.' : 'Draft request could not be confirmed. Retry safely.', [400, 403, 404, 409].includes(response.status) ? response.status : 503);
+  return Response.json(await response.json(), { status: response.status, headers });
+}
+
+// The sole browser authentication boundary. Only explicitly listed paths are proxied.
 export async function handleAuthentication(request: Request): Promise<Response | null> {
   const url = new URL(request.url);
   const path = url.pathname;
   if (path !== '/api/registration' && path !== '/api/registration/assisted' && !path.startsWith('/api/membership/') && !path.startsWith('/api/review/') && !path.startsWith('/api/auth/') && !path.startsWith('/api/admin/') && !/^\/portal(?:\/|$)/.test(path)) return null;
   try {
+    if (path.startsWith('/api/admin/plan-drafts')) return await planDrafts(request, url);
     if (path.startsWith('/api/membership/')) return await membership(request,url);
     if (path === '/api/registration' || path === '/api/registration/assisted') {
       const assisted = path === '/api/registration/assisted';

@@ -46,7 +46,7 @@ def create_legacy_schema(database):
 
     original = MetaData()
     for table in Base.metadata.sorted_tables:
-        if table.name in {"auth_sessions", "user_permissions", "login_throttles", "registration_submissions", "application_events", "savings_interests", "application_submissions", "application_registration_payments", "membership_approvals", "password_setup_invitations"}:
+        if table.name in {"auth_sessions", "user_permissions", "login_throttles", "registration_submissions", "application_events", "savings_interests", "application_submissions", "application_registration_payments", "membership_approvals", "password_setup_invitations", "plan_drafts", "plan_draft_versions"}:
             continue
         table.to_metadata(original)
     for name in ("created_at", "updated_at"):
@@ -418,3 +418,54 @@ def test_membership_migration_preserves_original_rows_and_limits_grants(migratio
             assert c.execute(text('SELECT r.name FROM roles r JOIN role_permissions rp ON r.id=rp.role_id JOIN permissions p ON p.id=rp.permission_id WHERE p.code=:code'),{'code':code}).scalars().all()==['administrator']
         for name in ['application_registration_payments','membership_approvals','password_setup_invitations']:
             assert c.execute(text(f'SELECT count(*) FROM {name}')).scalar()==0
+
+
+def test_draft_migration_and_concurrent_versions(migration_database):
+    from alembic import command
+    from app.migrations import migration_config
+    from sqlalchemy.orm import Session
+    from concurrent.futures import ThreadPoolExecutor
+    from app.models.user import User
+    from app.models.role import Role
+    from app.models.auth import AuthSession
+    from app.models.plan_draft import PlanDraftVersion
+    from app.schemas.plan_draft import DraftSave
+    from app.routers.plan_drafts import save
+    from app.exceptions import APIError
+    from app.security.auth import digest
+    from tests.test_auth import headers
+    database = migration_database
+    with database.connect() as c: command.upgrade(migration_config(c), '0007_membership_activation')
+    with database.begin() as c:
+        c.execute(text("INSERT INTO roles(name) VALUES ('administrator'),('staff'),('finance'),('member')"))
+        c.execute(text("INSERT INTO savings_plans(name) VALUES ('Retained legacy plan')"))
+        before = c.execute(text('SELECT * FROM savings_plans')).all()
+    upgrade(database); upgrade(database); require_current_schema(database)
+    with database.connect() as c:
+        assert c.execute(text('SELECT * FROM savings_plans')).all() == before
+        for code in ['plans:drafts:read', 'plans:drafts:write']:
+            assert c.execute(text('SELECT r.name FROM roles r JOIN role_permissions rp ON r.id=rp.role_id JOIN permissions p ON p.id=rp.permission_id WHERE p.code=:code'), {'code':code}).scalars().all() == ['administrator']
+    with Session(database) as db:
+        actor = User(email='draft-race@example.test', is_active=True, role_id=db.query(Role).filter_by(name='administrator').one().id)
+        db.add(actor); db.commit()
+        actor_id = actor.id
+        headers(db, actor, 'draft-race-session')
+        session = db.get(AuthSession, digest('draft-race-session'))
+        first = save(db, actor, session, DraftSave(request_key=uuid.uuid4(), base_version=0, terms={}))
+        identifier = first['draft_id']
+    def revise(_):
+        with Session(database) as db:
+            try:
+                save(db, db.get(User,actor_id), db.get(AuthSession,digest('draft-race-session')),
+                     DraftSave(request_key=uuid.uuid4(), base_version=1, terms={'description':'Race proposal'}), identifier)
+                return 'saved'
+            except APIError as error:
+                db.rollback(); assert error.status_code == 409; return 'conflict'
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        assert sorted(executor.map(revise, range(2))) == ['conflict', 'saved']
+    with Session(database) as db:
+        assert db.query(PlanDraftVersion).count() == 2
+    with database.connect() as c:
+        with pytest.raises(RuntimeError, match='history is retained'):
+            command.downgrade(migration_config(c), '0007_membership_activation')
+    require_current_schema(database)

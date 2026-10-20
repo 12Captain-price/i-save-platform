@@ -10,6 +10,19 @@ const post = { method: 'POST', headers: { origin: 'http://localhost:3000', 'X-Is
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Server authentication boundary', () => {
+  it('restricts draft writes to fixed paths, browser-origin checks and the session cookie', async () => {
+    const fetcher = vi.fn().mockResolvedValue(Response.json({ draft_id:1 }, { status:201 })); vi.stubGlobal('fetch',fetcher);
+    const data = { ...post, body:JSON.stringify({ request_key:'synthetic',base_version:0,terms:{} }), headers:{ ...post.headers,cookie:`isave_session=${token}`,Authorization:'Bearer spoofed' } };
+    expect((await handleAuthentication(request('/api/admin/plan-drafts', { ...data,headers:{...data.headers,origin:'https://attacker.test'} })))?.status).toBe(403);
+    expect((await handleAuthentication(request('/api/admin/plan-drafts/1/publish',data)))?.status).toBe(404);
+    expect((await handleAuthentication(request('/api/admin/plan-drafts?actor_id=9',data)))?.status).toBe(400);
+    expect(fetcher).not.toHaveBeenCalled();
+    expect((await handleAuthentication(request('/api/admin/plan-drafts',data)))?.status).toBe(201);
+    const [url,init] = fetcher.mock.lastCall!;
+    expect(String(url)).toContain('/api/v1/admin/plan-drafts');
+    expect(init.headers.Authorization).toBe(`Bearer ${token}`);
+    expect(init.body).toBe(data.body);
+  });
   it('proxies only the signed-in overview and refuses member selectors and arbitrary methods',async()=>{
     const fetcher=vi.fn().mockResolvedValue(Response.json({member:null}));vi.stubGlobal('fetch',fetcher);
     expect((await handleAuthentication(request('/api/membership/overview')))?.status).toBe(401);

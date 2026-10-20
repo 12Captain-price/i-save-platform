@@ -20,6 +20,7 @@ RESOURCES = ("members", "applications", "contributions", "fees", "subscriptions"
 PERMISSIONS = {f"{r}:{action}" for r in RESOURCES for action in ("read", "write")}
 PERMISSIONS.discard("audit:write")
 PERMISSIONS.add("applications:assist")
+PERMISSIONS |= {"plans:drafts:read", "plans:drafts:write"}
 from app.membership_policy import CAPABILITIES
 PERMISSIONS |= CAPABILITIES
 PERMISSIONS |= {"members:own", "applications:own", "contributions:own", "fees:own", "subscriptions:own"}
@@ -82,6 +83,7 @@ def permissions(db, user):
     # Security administration is never delegable to non-administrator roles.
     if not user.role or user.role.name != "administrator":
         codes -= SECURITY_PERMISSIONS
+        codes -= {"plans:drafts:read", "plans:drafts:write"}
     if not user.role or user.role.name not in {"staff", "administrator"}:
         codes.discard("applications:assist")
         codes -= {'membership:approve','membership:activate','invitations:issue'}

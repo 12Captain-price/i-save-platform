@@ -118,3 +118,6 @@ app.include_router(subscriptions_router)
 app.include_router(contributions_router)
 app.include_router(verifications_router)
 app.include_router(audit_router)
+
+from app.routers.plan_drafts import router as plan_drafts_router
+app.include_router(plan_drafts_router)
