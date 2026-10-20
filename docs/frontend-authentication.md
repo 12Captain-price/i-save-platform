@@ -44,6 +44,12 @@ shared IP; operational proxy/rate-limit tuning remains outstanding.
 
 ## Unavailable screens
 
+The Member Overview now reads owned backend membership, verified fees, savings
+interests and subscriptions; see [member overview](member-overview.md). It shows
+no savings figure while a reliable reconciled calculation is unavailable. Fees
+and public Contact are supported links; unconnected business screens still use
+the unavailable state.
+
 Authentication, identity, workspace access and logout are connected. The Admin
 Organisation overview and Members directory now use real backend data; see
 [admin directory validation](admin-directory-validation.md). Other business

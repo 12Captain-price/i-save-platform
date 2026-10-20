@@ -41,7 +41,7 @@ for (const role of ['member', 'staff', 'finance', 'admin']) {
     await page.getByLabel('Password', { exact: true }).fill(password);
     await page.getByRole('button', { name: 'Log in', exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/portal/${role}/dashboard$`));
-    await expect(role === 'admin' ? page.getByTestId('count-Member records') : page.getByText('This screen is not available yet')).toBeVisible();
+    await expect(role === 'admin' ? page.getByTestId('count-Member records') : role === 'member' ? page.getByText('Savings summary not available yet') : page.getByText('This screen is not available yet')).toBeVisible();
     expect(await page.locator('body').innerText()).not.toMatch(/Tariro Moyo|\$[0-9]|Demo preview|demonstration/i);
     const session = (await context.cookies()).find(c => c.name === 'isave_session');
     expect(!!session?.httpOnly && session.sameSite === 'Strict').toBe(true);
@@ -60,7 +60,7 @@ for (const role of ['member', 'staff', 'finance', 'admin']) {
       expect((await page.request.get('/api/admin/overview')).status()).toBe(403);
     }
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await expect(role === 'admin' ? page.getByTestId('count-Member records') : page.getByText('This screen is not available yet')).toBeVisible();
+    await expect(role === 'admin' ? page.getByTestId('count-Member records') : role === 'member' ? page.getByText('Savings summary not available yet') : page.getByText('This screen is not available yet')).toBeVisible();
     await page.goto(`/portal/${role === 'admin' ? 'member' : 'admin'}/dashboard`, { waitUntil: 'domcontentloaded' });
     await expect(page).toHaveURL(new RegExp(`/portal/${role}/dashboard$`));
     await page.getByRole('button', { name: 'Log out' }).click();

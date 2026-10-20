@@ -71,7 +71,8 @@ async function identity(token: string): Promise<Identity | null> {
 async function membership(request: Request, url: URL) {
   const match = url.pathname.match(/^\/api\/membership\/applications\/([1-9][0-9]{0,9})(?:\/(payment|verify|approve|activate|invitation))?$/);
   const fees = url.pathname === '/api/membership/fees';
-  if ((!match && !fees) || url.search) return message('Not found.',404);
+  const overview = url.pathname === '/api/membership/overview';
+  if ((!match && !fees && !overview) || url.search) return message('Not found.',404);
   const action = match?.[2];
   if (request.method !== (action ? 'POST' : 'GET')) return message('Method not allowed.',405);
   const token = tokenFrom(request);
@@ -84,7 +85,7 @@ async function membership(request: Request, url: URL) {
     if (body.length > 4096) return message('Check the entered details.',400);
     try { JSON.parse(body); } catch { return message('Check the entered details.',400); }
   }
-  const response = await fetch(new URL(`/api/v1/membership/${fees ? 'fees' : `applications/${match![1]}${action ? `/${action}` : ''}`}`,process.env['AUTH_API_ORIGIN'] ?? 'http://127.0.0.1:8000'),{
+  const response = await fetch(new URL(`/api/v1/membership/${overview ? 'overview' : fees ? 'fees' : `applications/${match![1]}${action ? `/${action}` : ''}`}`,process.env['AUTH_API_ORIGIN'] ?? 'http://127.0.0.1:8000'),{
     method:request.method,headers:{Authorization:`Bearer ${token}`,...(action?{'Content-Type':'application/json'}:{})},...(body!==undefined?{body}:{}),
     cache:'no-store',redirect:'error',signal:AbortSignal.timeout(10_000),
   });

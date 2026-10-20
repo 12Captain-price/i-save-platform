@@ -1,6 +1,5 @@
-from fastapi import APIRouter,Depends
+from fastapi import APIRouter,Depends,Request
 from pydantic import BaseModel,ConfigDict
-from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -8,9 +7,7 @@ from app.exceptions import APIError
 from app.models.auth import AuthSession
 from app.models.user import User
 from app.models.member import Member
-from app.models.membership import ApplicationRegistrationPayment as Payment,MembershipApproval as Approval,PasswordSetupInvitation as Invitation
-from app.models.registration_fee import RegistrationFee
-from app.models.subscription import Subscription
+from app.models.membership import PasswordSetupInvitation as Invitation
 from app.security.auth import current_session,require,current_user,permissions,digest
 from app.services.auth import throttle
 from app.services import membership as service
@@ -103,16 +100,21 @@ def invitation(application_id:int,body:InvitationRequest,actor:User=Depends(prot
 
 
 @router.get('/fees')
-def member_fees(actor:User=Depends(current_user),db:Session=Depends(get_db)):
+def member_fees(request:Request,actor:User=Depends(current_user),db:Session=Depends(get_db)):
+    if request.query_params:raise APIError(400,'bad_request','Member selectors are not accepted')
     codes=permissions(db,actor)
-    if 'fees:own' not in codes:raise APIError(403,'forbidden','Member fee access required')
+    if not {'fees:own','subscriptions:own'} <= codes:raise APIError(403,'forbidden','Member fee and subscription access required')
     member=db.query(Member).filter_by(user_id=actor.id).one_or_none()
     if not member:return {'registration_fees':[],'subscriptions':[]}
-    result=[]
-    for payment,approval in db.execute(select(Payment,Approval).join(Approval,Approval.application_id==Payment.application_id).where(Payment.member_id==member.id,Approval.member_id==member.id,Approval.activated_at.is_not(None))):
-        if service.verified(payment):result.append({'amount':str(payment.amount),'currency':payment.currency,'status':'Paid','reference':payment.reference,'payment_date':payment.payment_date,'verified_at':payment.verified_at})
-    # Preserve separately recorded historical fees without copying them into the new payment table.
-    for old in db.query(RegistrationFee).filter_by(member_id=member.id).all():
-        result.append({'amount':str(old.amount),'currency':old.currency,'status':old.status,'reference':old.fee_reference,'payment_date':old.paid_at.date() if old.paid_at else None,'verified_at':None})
-    subscriptions=[{'amount':str(s.amount),'currency':s.currency,'period_month':s.period_month,'status':s.status,'due_date':s.due_date} for s in db.query(Subscription).filter_by(member_id=member.id).order_by(Subscription.period_month).all()]
-    return {'registration_fees':result,'subscriptions':subscriptions}
+    from app.services.member_portal import fee_records
+    return fee_records(db,member)
+
+
+@router.get('/overview')
+def member_overview(request:Request,actor:User=Depends(current_user),db:Session=Depends(get_db)):
+    needed={'members:own','applications:own','fees:own','subscriptions:own'}
+    if not actor.role or actor.role.name!='member' or not needed <= permissions(db,actor):
+        raise APIError(403,'forbidden','Member overview access required')
+    if request.query_params:raise APIError(400,'bad_request','Member selectors are not accepted')
+    from app.services.member_portal import overview
+    return overview(db,actor)

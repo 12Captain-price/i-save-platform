@@ -10,6 +10,15 @@ const post = { method: 'POST', headers: { origin: 'http://localhost:3000', 'X-Is
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Server authentication boundary', () => {
+  it('proxies only the signed-in overview and refuses member selectors and arbitrary methods',async()=>{
+    const fetcher=vi.fn().mockResolvedValue(Response.json({member:null}));vi.stubGlobal('fetch',fetcher);
+    expect((await handleAuthentication(request('/api/membership/overview')))?.status).toBe(401);
+    expect((await handleAuthentication(request('/api/membership/overview?member_id=9',{headers:{cookie:`isave_session=${token}`}})))?.status).toBe(404);
+    expect((await handleAuthentication(request('/api/membership/overview',{method:'POST',headers:{cookie:`isave_session=${token}`}})))?.status).toBe(405);
+    const response=await handleAuthentication(request('/api/membership/overview',{headers:{cookie:`isave_session=${token}`,Authorization:'Bearer spoofed'}}));
+    expect(response?.status).toBe(200);expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(new URL(fetcher.mock.calls[0]![0]).pathname).toBe('/api/v1/membership/overview');expect(fetcher.mock.calls[0]![1].headers.Authorization).toBe(`Bearer ${token}`);
+  });
   it('limits membership bridges to fixed paths and rejects CSRF, query ownership and missing sessions',async()=>{
     const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
     expect((await handleAuthentication(request('/api/membership/fees')))?.status).toBe(401);
