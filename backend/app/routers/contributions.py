@@ -84,5 +84,11 @@ def confirmed_savings_total(
     member = scoped_query(db, Member, actor, "contributions").filter(Member.id == member_id).first()
     if not member:
         raise not_found("Member not found")
+    # This legacy response is USD-only and is not a reconciled ledger. Never
+    # combine ZiG with USD or relabel another currency as USD.
+    from app.exceptions import APIError
+    currencies={c.currency for c in db.query(Contribution).filter_by(member_id=member_id,status='Verified').all()}
+    if currencies-{'USD'}:
+        raise APIError(409,'currency_totals_unavailable','Currency-separated reconciled savings totals are not available. USD and ZiG are not combined or converted.')
     total = contribution_service.confirmed_savings_total(db, member_id)
     return {"member_id": member_id, "confirmed_savings": str(total), "currency": "USD"}

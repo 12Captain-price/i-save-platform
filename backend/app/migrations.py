@@ -13,7 +13,7 @@ from alembic.autogenerate import compare_metadata
 from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
-from sqlalchemy import inspect, text, UniqueConstraint, MetaData
+from sqlalchemy import inspect, text, UniqueConstraint, MetaData, CheckConstraint
 from sqlalchemy.engine import Engine
 
 from app.database import Base, engine
@@ -21,8 +21,8 @@ import app.models  # noqa: F401
 
 
 INITIAL_REVISION = "0001_initial_schema"
-ADOPTION_HEAD = "0008_plan_drafts"
-AUTH_TABLES = {"auth_sessions", "user_permissions", "login_throttles", "registration_submissions", "application_events", "savings_interests", "application_submissions", "application_registration_payments", "membership_approvals", "password_setup_invitations", "plan_drafts", "plan_draft_versions"}
+ADOPTION_HEAD = "0010_fee_currency"
+AUTH_TABLES = {"auth_sessions", "user_permissions", "login_throttles", "registration_submissions", "application_events", "savings_interests", "application_submissions", "application_registration_payments", "membership_approvals", "password_setup_invitations", "plan_drafts", "plan_draft_versions", "business_settings_versions", "business_settings_publications", "application_settings_snapshots", "subscription_settings_snapshots", "fee_rate_versions", "fee_rate_publications", "fee_obligations", "subscription_fee_payments"}
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -142,7 +142,20 @@ def schema_differences(connection, *, legacy: bool = False) -> list[str]:
         actual_pk = tuple(inspector.get_pk_constraint(table)["constrained_columns"])
         if actual_pk != tuple(col.name for col in model.primary_key.columns):
             differences.append(f"{table}: primary key differs")
-        if inspector.get_check_constraints(table):
+        checks=inspector.get_check_constraints(table)
+        expected_checks=[c for c in model.constraints if isinstance(c,CheckConstraint)]
+        normal_check=lambda sql:re.sub(r'\s+','',str(sql)).lower()
+        if expected_checks:
+            expected={(c.name,normal_check(c.sqltext)) for c in expected_checks}
+            actual={(c['name'],normal_check(c['sqltext'])) for c in checks}
+            # PostgreSQL removes redundant AND-group parentheses on reflection.
+            # Accept only the two exact renderings of this declared invariant.
+            grouped=normal_check('(application_id IS NOT NULL AND subscription_id IS NULL) OR (application_id IS NULL AND subscription_id IS NOT NULL)')
+            ungrouped=normal_check('application_id IS NOT NULL AND subscription_id IS NULL OR application_id IS NULL AND subscription_id IS NOT NULL')
+            if table=='fee_obligations' and expected=={('ck_fee_obligation_target',grouped)} and actual=={('ck_fee_obligation_target',ungrouped)}:
+                actual=expected
+            if actual!=expected:differences.append(f"{table}: check constraints differ")
+        elif checks:
             differences.append(f"{table}: unexpected check constraints")
         for column in inspector.get_columns(table):
             original = model.columns.get(column["name"])

@@ -1,13 +1,14 @@
 import { render,screen,fireEvent,waitFor } from '@testing-library/react';
 import { afterEach,it,expect,vi } from 'vitest';
 import { MembershipReview,MemberFees } from '@/components/portal/MembershipReview';
+vi.mock('@/lib/live-public-contact',async()=>{const {publicContact}=await import('@/lib/public-contact');return {usePublicContacts:()=>({contact:publicContact,error:false,retry:vi.fn()})};});
 import { PasswordSetup } from '@/components/auth/PasswordSetup';
 const refresh=vi.hoisted(()=>vi.fn());
 vi.mock('@/components/auth/AuthProvider',()=>({useAuth:()=>({refresh,identity:{permissions:['registration-fees:record','registration-fees:verify','membership:approve','membership:activate','invitations:issue']}})}));
 vi.mock('@/components/site/PublicLayout',()=>({PublicLayout:({children}:{children:React.ReactNode})=><div>{children}</div>}));
 vi.mock('@tanstack/react-router',()=>({Link:({children}:{children:React.ReactNode})=><span>{children}</span>}));
 afterEach(()=>vi.unstubAllGlobals());
-const workflow={payment:null,approval:null,can_approve:false,can_verify:false,approval_blockers:['Verified US$20 required.'],acknowledgement:{acknowledgement:'I reviewed the verified fee.',acknowledgement_version:'v1'},delivery:{available:false,status:'Not issued'}};
+const workflow={fee_policy:{amount:'20.00',currency:'USD',settings_version:0},payment:null,approval:null,can_approve:false,can_verify:false,approval_blockers:['Verified US$20 required.'],acknowledgement:{acknowledgement:'I reviewed the verified fee.',acknowledgement_version:'v1'},delivery:{available:false,status:'Not issued'}};
 it('keeps approval and acknowledgement disabled when backend prerequisites fail',async()=>{
  const fetcher=vi.fn().mockResolvedValue(Response.json(workflow));vi.stubGlobal('fetch',fetcher);
  render(<MembershipReview id={1} onChange={()=>{}}/>);

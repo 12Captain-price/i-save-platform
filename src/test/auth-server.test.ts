@@ -10,6 +10,39 @@ const post = { method: 'POST', headers: { origin: 'http://localhost:3000', 'X-Is
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Server authentication boundary', () => {
+  it('protects fee rate publication and subscription payment bridges against forged origins and arbitrary paths',async()=>{
+    const fetcher=vi.fn().mockResolvedValue(Response.json({completed:true}));vi.stubGlobal('fetch',fetcher);
+    const requestData={...post,headers:{...post.headers,cookie:`isave_session=${token}`}};
+    expect((await handleAuthentication(request('/api/admin/fee-rates/publish',{...requestData,headers:{...requestData.headers,origin:'https://attacker.test'}})))?.status).toBe(403);
+    expect((await handleAuthentication(request('/api/membership/subscriptions/1/payment',{...requestData,headers:{...requestData.headers,origin:'https://attacker.test'}})))?.status).toBe(403);
+    expect((await handleAuthentication(request('/api/membership/subscriptions?member_id=9',{headers:{cookie:`isave_session=${token}`}})))?.status).toBe(400);
+    expect((await handleAuthentication(request('/api/admin/fee-rates/secrets',requestData)))?.status).toBe(404);
+    expect(fetcher).not.toHaveBeenCalled();
+    expect((await handleAuthentication(request('/api/membership/subscriptions/1/payment',requestData)))?.status).toBe(200);
+    expect(fetcher.mock.lastCall![1].headers.Authorization).toBe(`Bearer ${token}`);
+  });
+  it('keeps business settings behind fixed paths, origin verification and the session cookie',async()=>{
+    const fetcher=vi.fn().mockResolvedValue(Response.json({version:2},{status:201}));vi.stubGlobal('fetch',fetcher);
+    const input={...post,body:JSON.stringify({request_key:'synthetic',base_version:1,terms:{}}),headers:{...post.headers,cookie:`isave_session=${token}`,Authorization:'Bearer spoofed'}};
+    expect((await handleAuthentication(request('/api/admin/organisation-settings',{...input,headers:{...input.headers,origin:'https://attacker.test'}})))?.status).toBe(403);
+    expect((await handleAuthentication(request('/api/admin/organisation-settings/secrets',input)))?.status).toBe(404);
+    expect((await handleAuthentication(request('/api/admin/organisation-settings?actor_id=7',input)))?.status).toBe(404);
+    expect(fetcher).not.toHaveBeenCalled();
+    expect((await handleAuthentication(request('/api/admin/organisation-settings',input)))?.status).toBe(201);
+    expect(fetcher.mock.lastCall![1].headers.Authorization).toBe(`Bearer ${token}`);
+  });
+  it('exposes only a fixed public contacts bridge without forwarding browser credentials',async()=>{
+    const fetcher=vi.fn().mockResolvedValue(Response.json({office:'Published office'}));vi.stubGlobal('fetch',fetcher);
+    const response=await handleAuthentication(request('/api/public/contacts',{headers:{cookie:`isave_session=${token}`,Authorization:'Bearer spoofed'}}));
+    expect(response?.status).toBe(200);expect(response?.headers.get('cache-control')).toBe('no-store');
+    expect(fetcher.mock.lastCall![1].headers).toBeUndefined();
+    expect((await handleAuthentication(request('/api/public/contacts?draft=true')))?.status).toBe(404);
+  });
+  it('translates settings validation into useful field guidance without reflecting input',async()=>{
+    vi.stubGlobal('fetch',vi.fn().mockResolvedValue(Response.json({error:{code:'validation_error',message:'Request validation failed',details:{errors:[{loc:['body','terms','subscription_due_day'],type:'less_than_equal',input:'PRIVATE'}]}}},{status:400})));
+    const response=await handleAuthentication(request('/api/admin/organisation-settings',{...post,headers:{...post.headers,cookie:`isave_session=${token}`}}));
+    expect(response?.status).toBe(400);const body=await response?.text();expect(body).toContain('Due day: use 1–28 or leave blank');expect(body).not.toContain('PRIVATE');
+  });
   it('restricts draft writes to fixed paths, browser-origin checks and the session cookie', async () => {
     const fetcher = vi.fn().mockResolvedValue(Response.json({ draft_id:1 }, { status:201 })); vi.stubGlobal('fetch',fetcher);
     const data = { ...post, body:JSON.stringify({ request_key:'synthetic',base_version:0,terms:{} }), headers:{ ...post.headers,cookie:`isave_session=${token}`,Authorization:'Bearer spoofed' } };

@@ -47,6 +47,11 @@ def record(application_id:int,body:PaymentRecord,actor:User=Depends(protected('r
     service.record_payment(db,actor,application_id,body);commit(db);return {'completed':True}
 
 
+@router.post('/applications/{application_id}/obligation')
+def obligation(application_id:int,body:EmptyAction,actor:User=Depends(protected('registration-fees:record')),db:Session=Depends(get_db)):
+    row=service.registration_obligation(db,actor,application_id);commit(db);return service.fee_currency.quote(db,row)
+
+
 @router.post('/applications/{application_id}/verify')
 def verify(application_id:int,body:EmptyAction,actor:User=Depends(protected('registration-fees:verify')),db:Session=Depends(get_db)):
     service.verify_payment(db,actor,application_id);commit(db);return {'completed':True}
@@ -54,6 +59,11 @@ def verify(application_id:int,body:EmptyAction,actor:User=Depends(protected('reg
 
 @router.post('/applications/{application_id}/approve')
 def approve(application_id:int,body:ReviewAcknowledgement,actor:User=Depends(protected('membership:approve')),db:Session=Depends(get_db)):
+    # Re-read after locking the application: a concurrently recorded payment may pin its policy.
+    service.lock_application(db,application_id)
+    version,terms=service.application_policy(db,application_id)
+    expected=service.acknowledgement(terms,version)['acknowledgement_version']
+    if body.acknowledgement_version!=expected:raise APIError(400,'stale_acknowledgement','Refresh and acknowledge the current review wording')
     service.approve(db,actor,application_id);commit(db);return {'completed':True}
 
 

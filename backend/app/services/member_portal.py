@@ -7,6 +7,9 @@ from app.models.subscription import Subscription
 from app.services.membership import verified
 from app.models.application import MembershipApplication, SavingsInterest
 from app.models.member import Member
+from app.models.business_settings import SubscriptionSettingsSnapshot
+from app.models.fee_currency import FeeObligation,SubscriptionFeePayment
+from app.services.fee_currency import quote
 
 
 def overview(db, actor):
@@ -39,14 +42,13 @@ def overview(db, actor):
             'activated_at':approval.activated_at if approval else None,
             'subscription_start_month':approval.subscription_start_month if approval else None},
         'fees':fees,
-        'registration_fee_verified': any(r['verified_at'] and r['status']=='Paid'
-            and r['currency']=='USD' and Decimal(r['amount'])==Decimal('20.00') for r in fees['registration_fees']),
+        'registration_fee_verified': any(r['verified_at'] and r['status']=='Paid' for r in fees['registration_fees']),
         'savings_interests':interests,
         'plan_enrolment':{'available':False,'notice':'Formal savings-plan approval is not configured. An expression of interest is not an approved savings-plan enrolment.'},
         # The legacy helper mixes currencies and does not establish reconciled,
         # immutable ledger totals. Expose no balance, even if rows say Verified.
         'savings':{'available':False,'message':'Savings summary not available yet'},
-        'subscription_due_day':None,
+        'subscription_due_day':next((s['due_date'].day for s in reversed(fees['subscriptions']) if s['due_date']),None),
     }
 
 
@@ -55,9 +57,17 @@ def fee_records(db, member):
         return {'registration_fees': [], 'subscriptions': []}
     result=[]
     for payment,approval in db.execute(select(Payment,Approval).join(Approval,Approval.application_id==Payment.application_id).where(Payment.member_id==member.id,Approval.member_id==member.id,Approval.activated_at.is_not(None))):
-        if verified(payment):result.append({'amount':str(payment.amount),'currency':payment.currency,'status':'Paid','reference':payment.reference,'payment_date':payment.payment_date,'verified_at':payment.verified_at})
+        if verified(payment,db):
+            obligation=db.query(FeeObligation).filter_by(application_id=payment.application_id).one_or_none()
+            result.append({'amount':str(obligation.amount if obligation else payment.amount),'currency':obligation.currency if obligation else payment.currency,'status':'Paid','reference':payment.reference,'payment_date':payment.payment_date,'verified_at':payment.verified_at,
+                'payment_amount':str(payment.amount),'payment_currency':payment.currency,'obligation':quote(db,obligation)})
     # Preserve separately recorded historical fees without copying them into the new payment table.
     for old in db.query(RegistrationFee).filter_by(member_id=member.id).all():
         result.append({'amount':str(old.amount),'currency':old.currency,'status':old.status,'reference':old.fee_reference,'payment_date':old.paid_at.date() if old.paid_at else None,'verified_at':None})
-    subscriptions=[{'amount':str(s.amount),'currency':s.currency,'period_month':s.period_month,'status':s.status if s.status in {'Pending','Paid'} else 'Requires office review','due_date':None} for s in db.query(Subscription).filter_by(member_id=member.id).order_by(Subscription.period_month).all()]
+    subscriptions=[]
+    for s in db.query(Subscription).filter_by(member_id=member.id).order_by(Subscription.period_month).all():
+        payment=db.get(SubscriptionFeePayment,s.id)
+        subscriptions.append({'amount':str(s.amount),'currency':s.currency,'period_month':s.period_month,'status':s.status if s.status in {'Pending','Paid'} else 'Requires office review','due_date':s.due_date if db.get(SubscriptionSettingsSnapshot,s.id) else None,
+            'obligation':quote(db,db.query(FeeObligation).filter_by(subscription_id=s.id).one_or_none()),
+            'payment':None if not payment else {'amount':str(payment.amount),'currency':payment.currency,'reference':payment.reference,'payment_date':payment.payment_date,'verified_at':payment.verified_at}})
     return {'registration_fees':result,'subscriptions':subscriptions}

@@ -40,3 +40,5 @@ __all__ = [
     "verification",
 ]
 import app.models.plan_draft
+import app.models.business_settings
+import app.models.fee_currency

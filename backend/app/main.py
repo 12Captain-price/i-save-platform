@@ -121,3 +121,11 @@ app.include_router(audit_router)
 
 from app.routers.plan_drafts import router as plan_drafts_router
 app.include_router(plan_drafts_router)
+
+from app.routers.business_settings import router as business_settings_router
+app.include_router(business_settings_router)
+
+from app.routers.fee_rates import router as fee_rates_router
+from app.routers.subscription_payments import router as subscription_payments_router
+app.include_router(fee_rates_router)
+app.include_router(subscription_payments_router)

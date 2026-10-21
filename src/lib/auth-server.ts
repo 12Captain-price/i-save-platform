@@ -69,7 +69,8 @@ async function identity(token: string): Promise<Identity | null> {
 }
 
 async function membership(request: Request, url: URL) {
-  const match = url.pathname.match(/^\/api\/membership\/applications\/([1-9][0-9]{0,9})(?:\/(payment|verify|approve|activate|invitation))?$/);
+  if(url.pathname.startsWith('/api/membership/subscriptions'))return subscriptionPayments(request,url);
+  const match = url.pathname.match(/^\/api\/membership\/applications\/([1-9][0-9]{0,9})(?:\/(payment|verify|approve|activate|invitation|obligation))?$/);
   const fees = url.pathname === '/api/membership/fees';
   const overview = url.pathname === '/api/membership/overview';
   if ((!match && !fees && !overview) || url.search) return message('Not found.',404);
@@ -96,6 +97,61 @@ async function membership(request: Request, url: URL) {
     response.status===429?'Too many attempts. Please try again later.':'Unable to complete this action. Refresh to check its status before retrying.',
     [400,403,409,422,429].includes(response.status)?response.status:503);
   return Response.json(await response.json(),{headers});
+}
+
+async function subscriptionPayments(request:Request,url:URL) {
+  const match=url.pathname.match(/^\/api\/membership\/subscriptions(?:\/([1-9][0-9]{0,9})\/(payment|verify))?$/);
+  if(!match)return message('Not found.',404);
+  const writing=!!match[2];if(request.method!==(writing?'POST':'GET'))return message('Method not allowed.',405);
+  const token=tokenFrom(request);if(!token)return expired(request);
+  const endpoint=new URL('/api/v1/membership/subscriptions'+(writing?`/${match[1]}/${match[2]}`:''),process.env['AUTH_API_ORIGIN']??'http://127.0.0.1:8000');
+  for(const [key,value] of url.searchParams){if(writing||!['skip','limit'].includes(key)||endpoint.searchParams.has(key))return message('Unsupported parameters.',400);endpoint.searchParams.set(key,value);}
+  let body:string|undefined;
+  if(writing){
+    if(request.headers.get('origin')!==url.origin||request.headers.get('x-isave-request')!=='1')return message('Reload and try again.',403);
+    if(!request.headers.get('content-type')?.startsWith('application/json'))return message('Check the payment fields.',400);
+    body=await request.text();if(body.length>4096)return message('Check the payment fields.',400);
+    try{JSON.parse(body);}catch{return message('Check the payment fields.',400);}
+  }
+  const response=await fetch(endpoint,{method:request.method,headers:{Authorization:`Bearer ${token}`,...(writing?{'Content-Type':'application/json'}:{})},...(body!==undefined?{body}:{}),cache:'no-store',redirect:'error',signal:AbortSignal.timeout(10_000)});
+  if(response.status===401)return expired(request);
+  if(!response.ok)return message(response.status===403?'Your account does not have permission for this fee action.':response.status===409?'A payment, reference or frozen quote conflicts. Refresh before retrying.':response.status===400?'Use the exact frozen amount/currency and check the reference and payment date.':'Fee action could not be confirmed. Refresh and retry safely.',[400,403,404,409].includes(response.status)?response.status:503);
+  return Response.json(await response.json(),{status:response.status,headers});
+}
+
+async function organisationSettings(request:Request,url:URL) {
+  if (!/^\/api\/admin\/(organisation-settings|fee-rates)(?:\/publish)?$/.test(url.pathname) || url.search) return message('Not found.',404);
+  const resource=url.pathname.includes('/fee-rates')?'fee-rates':'organisation-settings';
+  const publish=url.pathname.endsWith('/publish');
+  if (request.method!=='POST' && (publish || request.method!=='GET')) return message('Method not allowed.',405);
+  const token=tokenFrom(request); if (!token) return expired(request);
+  let body:string|undefined;
+  if (request.method==='POST') {
+    if (request.headers.get('origin')!==url.origin || request.headers.get('x-isave-request')!=='1') return message('Reload and try again.',403);
+    if (!request.headers.get('content-type')?.startsWith('application/json')) return message('Check the settings fields.',400);
+    body=await request.text(); if(body.length>12000) return message('Settings text too long.',400);
+    try {JSON.parse(body);} catch {return message('Check the settings fields.',400);}
+  }
+  const response=await fetch(new URL('/api/v1/admin/'+resource+(publish?'/publish':''),process.env['AUTH_API_ORIGIN']??'http://127.0.0.1:8000'),{
+    method:request.method,headers:{Authorization:`Bearer ${token}`,...(body!==undefined?{'Content-Type':'application/json'}:{})},...(body!==undefined?{body}:{}),cache:'no-store',redirect:'error',signal:AbortSignal.timeout(10_000),
+  });
+  if(response.status===401)return expired(request);
+  if(!response.ok) {
+    const data=await response.json().catch(()=>({}));
+    const hints:Record<string,string>={
+      office:'Office address: use at most 500 characters.',email:'Public email: enter a valid email address.',
+      office_phone:'Office phone: include the country prefix and a valid phone number.',director_phone:'Director phone: include the country prefix and a valid phone number.',additional_phone:'Additional phone: include the country prefix and a valid phone number.',
+      registration_amount:'Registration fee: enter a positive amount with up to two decimal places.',subscription_amount:'Subscription: enter a positive amount with up to two decimal places.',
+      registration_currency:'Registration currency: use three uppercase letters.',subscription_currency:'Subscription currency: use three uppercase letters.',
+      subscription_start:'Subscription start: choose the calendar month following activation.',subscription_due_day:'Due day: use 1–28 or leave blank; days 29–31 need an approved short-month rule.',
+      review_acknowledgement:'Reviewer wording: use at most 2000 characters.',effective_at:'Effective date: enter a valid date and time including a timezone.',
+      rate:'Rate: enter a positive ZiG-per-USD value with at most eight decimal places.',source:'Rate source: describe the source in at most 500 characters.',
+    };
+    const validation=data.error?.code==='validation_error' && Array.isArray(data.error?.details?.errors)?[...new Set((data.error.details.errors as {loc?:unknown[]}[]).slice(0,8).map(e=>hints[String(e.loc?.at(-1))]??'Check the request fields. Unsupported settings and actor IDs are not accepted.'))].join(' '):null;
+    const safe=response.status===400 && validation?validation:response.status===400 && typeof data.error?.message==='string'?data.error.message:response.status===403?'Organisation settings permission required.':response.status===409?'Settings changed or conflicting request. Reload before continuing.':'Settings request could not be confirmed. Retry the same request.';
+    return message(safe,[400,403,404,409].includes(response.status)?response.status:503);
+  }
+  return Response.json(await response.json(),{status:response.status,headers});
 }
 
 async function planDrafts(request: Request, url: URL) {
@@ -129,8 +185,14 @@ async function planDrafts(request: Request, url: URL) {
 export async function handleAuthentication(request: Request): Promise<Response | null> {
   const url = new URL(request.url);
   const path = url.pathname;
-  if (path !== '/api/registration' && path !== '/api/registration/assisted' && !path.startsWith('/api/membership/') && !path.startsWith('/api/review/') && !path.startsWith('/api/auth/') && !path.startsWith('/api/admin/') && !/^\/portal(?:\/|$)/.test(path)) return null;
+  if (path !== '/api/public/contacts' && path !== '/api/registration' && path !== '/api/registration/assisted' && !path.startsWith('/api/membership/') && !path.startsWith('/api/review/') && !path.startsWith('/api/auth/') && !path.startsWith('/api/admin/') && !/^\/portal(?:\/|$)/.test(path)) return null;
   try {
+    if (path === '/api/public/contacts') {
+      if (request.method!=='GET' || url.search) return message('Not found.',404);
+      const response=await fetch(new URL('/api/v1/public/contacts',process.env['AUTH_API_ORIGIN']??'http://127.0.0.1:8000'),{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(10_000)});
+      return response.ok?Response.json(await response.json(),{headers}):message('Office contacts unavailable.',503);
+    }
+    if (path.startsWith('/api/admin/organisation-settings') || path.startsWith('/api/admin/fee-rates')) return await organisationSettings(request,url);
     if (path.startsWith('/api/admin/plan-drafts')) return await planDrafts(request, url);
     if (path.startsWith('/api/membership/')) return await membership(request,url);
     if (path === '/api/registration' || path === '/api/registration/assisted') {

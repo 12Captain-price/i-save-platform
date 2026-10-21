@@ -4,7 +4,7 @@ import { SiteHeader, NAV } from './SiteHeader';
 import { Logo } from './Logo';
 import { Button } from '@/components/ui/button';
 import { siteContent } from '@/lib/portal/demo';
-import { publicContactEntries } from '@/lib/public-contact';
+import { usePublicContacts } from '@/lib/live-public-contact';
 
 const zpyfLogo = '/images/zpyf-logo.png';
 
@@ -68,6 +68,8 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
 }
 
 export function ContactCard() {
+  const {entries:publicContactEntries,error,retry}=usePublicContacts();
+  if (!publicContactEntries.length) return <div role="status">{error?'Office contact details are temporarily unavailable.':'Loading office contact details…'}{error && <button className="ml-2 underline" onClick={retry}>Retry contacts</button>}</div>;
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
       {publicContactEntries.map(c => (

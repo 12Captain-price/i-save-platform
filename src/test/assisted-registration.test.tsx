@@ -45,3 +45,4 @@ it('shows the action only with the specific permission and displays protected so
  await screen.findByText('Staff-assisted');expect(screen.getByText(authorization.wording)).toBeInTheDocument();
  expect(screen.getByText('Actor identity: synthetic-staff@example.test')).toBeInTheDocument();
 });
+vi.mock('@/lib/live-public-contact',async()=>{const {publicContact}=await import('@/lib/public-contact');return {usePublicContacts:()=>({contact:publicContact,error:false,retry:vi.fn()})};});

@@ -5,6 +5,7 @@ import { ApplicationScreens } from '@/components/portal/ApplicationScreens';
 const refresh = vi.hoisted(()=>vi.fn());
 vi.mock('@/components/auth/AuthProvider',()=>({useAuth:()=>({refresh})}));
 vi.mock('@/components/site/PublicLayout',()=>({PublicLayout:({children}:{children:React.ReactNode})=><div>{children}</div>}));
+vi.mock('@/lib/live-public-contact',async()=>{const {publicContact}=await import('@/lib/public-contact');return {usePublicContacts:()=>({contact:publicContact,error:false,retry:vi.fn()})};});
 vi.mock('@tanstack/react-router',()=>({Link:({children}:{children:React.ReactNode})=><span>{children}</span>}));
 afterEach(()=>{vi.unstubAllGlobals();refresh.mockClear();});
 it('submits application details once and clearly describes pending-only acknowledgement',async()=>{
@@ -15,8 +16,8 @@ it('submits application details once and clearly describes pending-only acknowle
  fireEvent.change(screen.getByLabelText('Email address (required)'),{target:{value:'test@example.test'}});
  fireEvent.click(screen.getByRole('button',{name:'Submit application'}));
  await screen.findByText('Application received');
- expect(fetcher).toHaveBeenCalledOnce();
- const body=JSON.parse(fetcher.mock.calls[0]![1].body);
+ const submissions=fetcher.mock.calls.filter(([,init])=>init?.method==='POST'); expect(submissions).toHaveLength(1);
+ const body=JSON.parse(fetcher.mock.calls.find(([,init])=>init?.method==='POST')![1].body);
  expect(body.email).toBe('test@example.test');expect(body).not.toHaveProperty('password');expect(body).not.toHaveProperty('status');
  expect(screen.queryByRole('button',{name:'Submit application'})).not.toBeInTheDocument();
 });
@@ -33,10 +34,10 @@ it('shows empty and denied application lists without sample applicants',async()=
 });
 it('renders populated detail and actual recorded history without approval actions',async()=>{
  const record={id:7,application_number:'SYNTHETIC-7',first_name:'Test',last_name:'Applicant',email:'test@example.test',status:'Pending',submitted_at:'2026-10-19T12:00:00Z',history:[{id:1,status:'Pending',note:'Public application submitted.',actor_user_id:null,recorded_at:'2026-10-19T12:00:00Z'}]};
- vi.stubGlobal('fetch',vi.fn().mockImplementation(async(url:string)=>Response.json(url.startsWith('/api/membership/')?{payment:null,approval:null,approval_blockers:['Registration fee must be verified as US$20.'],can_approve:false,can_verify:false,acknowledgement:{acknowledgement:'Review requires verified fee',acknowledgement_version:'test'},delivery:{available:false,status:'Not issued'}}:url.endsWith('/7')?record:{items:[record],total:1})));
+ vi.stubGlobal('fetch',vi.fn().mockImplementation(async(url:string)=>Response.json(url.startsWith('/api/membership/')?{fee_policy:{amount:'20.00',currency:'USD',settings_version:0},payment:null,approval:null,approval_blockers:['Registration fee must be verified as US$20.'],can_approve:false,can_verify:false,acknowledgement:{acknowledgement:'Review requires verified fee',acknowledgement_version:'test'},delivery:{available:false,status:'Not issued'}}:url.endsWith('/7')?record:{items:[record],total:1})));
  render(<ApplicationScreens/>);fireEvent.click(await screen.findByRole('button',{name:'View application for Test Applicant'}));
  await screen.findByText('Status history');await screen.findByText('Public application submitted.');
- expect(screen.getByRole('button',{name:'Approve membership'})).toBeDisabled();
+ expect(await screen.findByRole('button',{name:'Approve membership'})).toBeDisabled();
  expect(screen.queryByRole('button',{name:'Record US$20 payment'})).not.toBeInTheDocument();
  fireEvent.click(screen.getByRole('button',{name:'Back to applications'}));await screen.findByText('1 application recorded');
 });
@@ -71,7 +72,7 @@ it('preserves all entered details on failure and focuses a safe retry, then conf
  expect(screen.queryByRole('heading',{name:'Application received'})).not.toBeInTheDocument();
  fireEvent.click(screen.getByRole('button',{name:'Retry submission'}));
  const confirmation=await screen.findByRole('status');await waitFor(()=>expect(confirmation).toHaveFocus());
- expect(fetcher.mock.calls[0]![1].body).toBe(fetcher.mock.calls[1]![1].body);
+ const attempts=fetcher.mock.calls.filter(([,init])=>init?.method==='POST'); expect(attempts[0]![1].body).toBe(attempts[1]![1].body);
  expect(screen.getByText('Your application is awaiting review. This does not mean your membership has been approved.')).toBeInTheDocument();
  expect(screen.getByRole('list')).toBeInTheDocument();
  expect(screen.getByText('Submitting an application does not create a login account or confirm a payment.')).toBeInTheDocument();
@@ -93,7 +94,7 @@ it('offers five optional cards with pending information and no terms acceptance'
  fireEvent.change(screen.getByLabelText('Email address (required)'),{target:{value:'interest@example.test'}});
  fireEvent.click(screen.getByRole('button',{name:'Submit application'}));
  await screen.findByText('Application received');
- const body=JSON.parse(fetcher.mock.calls[0]![1].body);
+ const body=JSON.parse(fetcher.mock.calls.find(([,init])=>init?.method==='POST')![1].body);
  expect(body.preferred_category).toBe('education');expect(body.interest_notice_version).toBe('savings-interest-v1');
  expect(body).not.toHaveProperty('accepted_terms');
  expect(screen.getByRole('region',{name:'Submitted category preference'})).toHaveTextContent('No plan terms were accepted.');

@@ -1,0 +1,13 @@
+# Combine ONLY with compose.auth-test.yaml, project isave-settings-rehearsal.
+# Disposable tmpfs PostgreSQL; no normal volume, normal credentials or external email.
+services:
+  db:
+    environment:
+      POSTGRES_DB: isave_test_settings_rehearsal
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "isave_test_settings_rehearsal"]
+  backend:
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres@db:5432/isave_test_settings_rehearsal
+      ISAVE_REHEARSAL_ONLY: '1'
+      INVITATION_DELIVERY: disabled

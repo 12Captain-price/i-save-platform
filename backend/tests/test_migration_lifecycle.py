@@ -46,7 +46,7 @@ def create_legacy_schema(database):
 
     original = MetaData()
     for table in Base.metadata.sorted_tables:
-        if table.name in {"auth_sessions", "user_permissions", "login_throttles", "registration_submissions", "application_events", "savings_interests", "application_submissions", "application_registration_payments", "membership_approvals", "password_setup_invitations", "plan_drafts", "plan_draft_versions"}:
+        if table.name in {"auth_sessions", "user_permissions", "login_throttles", "registration_submissions", "application_events", "savings_interests", "application_submissions", "application_registration_payments", "membership_approvals", "password_setup_invitations", "plan_drafts", "plan_draft_versions", "business_settings_versions", "business_settings_publications", "application_settings_snapshots", "subscription_settings_snapshots", "fee_rate_versions", "fee_rate_publications", "fee_obligations", "subscription_fee_payments"}:
             continue
         table.to_metadata(original)
     for name in ("created_at", "updated_at"):
@@ -469,3 +469,144 @@ def test_draft_migration_and_concurrent_versions(migration_database):
         with pytest.raises(RuntimeError, match='history is retained'):
             command.downgrade(migration_config(c), '0007_membership_activation')
     require_current_schema(database)
+
+
+def test_settings_migration_preserves_baseline_and_serialises_changes(migration_database):
+    import json
+    from concurrent.futures import ThreadPoolExecutor
+    from sqlalchemy.orm import Session
+    from alembic import command
+    from app.migrations import migration_config
+    from app.models.user import User
+    from app.models.role import Role
+    from app.models.auth import AuthSession
+    from app.models.business_settings import BusinessSettingsVersion, BusinessSettingsPublication
+    from app.models.audit_event import AuditEvent
+    from app.schemas.business_settings import SettingsSave, SettingsPublish
+    from app.routers.business_settings import save, publish
+    from app.services.business_settings import DEFAULTS, active
+    from app.security.auth import digest
+    from app.exceptions import APIError
+    from tests.test_auth import headers
+    database=migration_database
+    with database.connect() as c:command.upgrade(migration_config(c),'0008_plan_drafts')
+    with database.begin() as c:
+        c.execute(text("INSERT INTO roles(name) VALUES ('administrator'),('staff'),('member'),('finance')"))
+        c.execute(text("INSERT INTO savings_plans(name) VALUES ('Preserved settings migration plan')"))
+        before=c.execute(text('SELECT * FROM savings_plans')).all()
+    upgrade(database);upgrade(database);require_current_schema(database)
+    with database.connect() as c:
+        assert c.execute(text('SELECT * FROM savings_plans')).all()==before
+        for code in ['settings:read','settings:write','settings:publish']:
+            assert c.execute(text('SELECT r.name FROM roles r JOIN role_permissions rp ON rp.role_id=r.id JOIN permissions p ON p.id=rp.permission_id WHERE p.code=:code'),{'code':code}).scalars().all()==['administrator']
+    with Session(database) as db:
+        version,baseline=active(db)
+        assert baseline==DEFAULTS and version>0
+        assert db.query(BusinessSettingsVersion).count()==db.query(BusinessSettingsPublication).count()==1
+        actor=User(email='settings-race@example.test',is_active=True,role_id=db.query(Role).filter_by(name='administrator').one().id)
+        db.add(actor);db.commit();actor_id=actor.id;headers(db,actor,'settings-race-session')
+    def draft(_):
+        with Session(database) as db:
+            try:
+                save(SettingsSave(request_key=uuid.uuid4(),base_version=version,terms=DEFAULTS),db.get(User,actor_id),db.get(AuthSession,digest('settings-race-session')),db)
+                return 'saved'
+            except APIError as error:
+                db.rollback();assert error.status_code==409;return 'conflict'
+    with ThreadPoolExecutor(max_workers=2) as executor:assert sorted(executor.map(draft,range(2)))==['conflict','saved']
+    with Session(database) as db:head=db.query(BusinessSettingsVersion).order_by(BusinessSettingsVersion.id.desc()).first().id
+    request=SettingsPublish(request_key=uuid.uuid4(),version_id=head)
+    def publication(_):
+        with Session(database) as db:
+            return publish(request,db.get(User,actor_id),db.get(AuthSession,digest('settings-race-session')),db)['version']
+    with ThreadPoolExecutor(max_workers=2) as executor:assert list(executor.map(publication,range(2)))==[head,head]
+    with Session(database) as db:
+        assert db.query(BusinessSettingsPublication).count()==2
+        assert db.query(AuditEvent).filter_by(action='organisation_settings_published').count()==1
+        assert db.query(AuditEvent).filter_by(action='organisation_settings_drafted').count()==1
+    with pytest.raises(RuntimeError,match='retained'),database.connect() as c:command.downgrade(migration_config(c),'0008_plan_drafts')
+    require_current_schema(database)
+
+
+def test_fee_rates_and_subscription_concurrent_settlement(migration_database):
+    from concurrent.futures import ThreadPoolExecutor
+    from sqlalchemy.orm import Session
+    from app.bootstrap import bootstrap
+    from app.models.user import User
+    from app.models.auth import AuthSession
+    from app.models.application import MembershipApplication
+    from app.models.membership import MembershipApproval
+    from app.models.subscription import Subscription
+    from app.models.contribution import Contribution
+    from app.models.fee_currency import FeeRateVersion,FeeRatePublication,FeeObligation,SubscriptionFeePayment
+    from app.models.audit_event import AuditEvent
+    from app.schemas.fee_currency import RatePublish
+    from app.schemas.membership import PaymentRecord
+    from app.routers.fee_rates import publish
+    from app.services import fee_currency,membership
+    from app.security.auth import digest
+    from tests.test_auth import headers
+    database=migration_database;upgrade(database)
+    with Session(database) as db:
+        assert db.query(FeeRateVersion).one().rate==34 and db.query(FeeRatePublication).count()==0
+        bootstrap(db,'fee-race@example.test','Synthetic-only-fee-race-123!')
+        actor=db.query(User).filter_by(email='fee-race@example.test').one();actor_id=actor.id
+        headers(db,actor,'fee-race-session')
+        app=MembershipApplication(application_number='FEE-RACE',first_name='Concurrent',last_name='Synthetic',email='fee-race-member@example.test',status='Pending');db.add(app);db.commit();app_id=app.id
+        version=db.query(FeeRateVersion).one().id
+    request=RatePublish(request_key=uuid.uuid4(),version_id=version)
+    def publication(_):
+        with Session(database) as db:return publish(request,db.get(User,actor_id),db.get(AuthSession,digest('fee-race-session')),db)['version']
+    with ThreadPoolExecutor(max_workers=4) as executor:assert list(executor.map(publication,range(4)))==[version]*4
+    with Session(database) as db:
+        actor=db.get(User,actor_id)
+        membership.record_payment(db,actor,app_id,PaymentRecord(amount='20',currency='USD',payment_date='2026-01-01',reference='FEE-RACE-REG'));db.commit()
+        membership.verify_payment(db,actor,app_id);db.commit();membership.approve(db,actor,app_id);db.commit();membership.activate(db,actor,app_id);db.commit()
+        approval=db.get(MembershipApproval,app_id);sub=db.query(Subscription).filter_by(member_id=approval.member_id).one();sub_id=sub.id
+    payment=PaymentRecord(amount='170',currency='ZWG',payment_date='2026-01-01',reference='FEE-RACE-SUB')
+    def settle(action):
+        with Session(database) as db:
+            if action=='record':fee_currency.subscription_payment(db,db.get(User,actor_id),sub_id,payment)
+            else:fee_currency.verify_subscription(db,db.get(User,actor_id),sub_id)
+            db.commit()
+    for action in ['record','verify']:
+        with ThreadPoolExecutor(max_workers=4) as executor:list(executor.map(lambda _:settle(action),range(4)))
+    with Session(database) as db:
+        assert db.query(FeeRatePublication).count()==db.query(SubscriptionFeePayment).count()==1
+        assert db.query(Contribution).count()==0
+        sub=db.get(Subscription,sub_id);assert str(sub.amount)=='5.00' and sub.currency=='USD' and sub.status=='Paid'
+        assert str(db.query(FeeObligation).filter_by(subscription_id=sub_id).one().zig_amount)=='170.00'
+        for action in ['fee_rate_published','subscription_payment_recorded','subscription_payment_verified']:
+            assert db.query(AuditEvent).filter_by(action=action).count()==1
+    # The invariant is enforced in the database as well as by the schema gate.
+    with pytest.raises(IntegrityError),database.begin() as c:
+        c.execute(text("INSERT INTO fee_obligations(amount,currency,rounding,origin) VALUES (20,'USD','ROUND_HALF_UP_2DP','Synthetic invalid')"))
+    if database.dialect.name=='postgresql':
+        with database.begin() as c:
+            c.execute(text('ALTER TABLE fee_obligations DROP CONSTRAINT ck_fee_obligation_target'))
+            c.execute(text('ALTER TABLE fee_obligations ADD CONSTRAINT ck_fee_obligation_target CHECK (amount >= 0)'))
+        with database.connect() as c:assert 'fee_obligations: check constraints differ' in schema_differences(c)
+
+
+def test_private_rehearsal_setup_and_history_check(migration_database,tmp_path,monkeypatch,capsys):
+    from sqlalchemy.orm import Session
+    from app import settings_rehearsal as cli
+    from app.models.user import User
+    from app.models.fee_currency import FeeRateVersion
+    from app.models.auth import AuthSession
+    from app.schemas.fee_currency import RatePublish
+    from app.routers.fee_rates import publish
+    from app.security.auth import digest
+    from tests.test_auth import headers
+    database=migration_database;upgrade(database)
+    monkeypatch.setattr(cli,'engine',database);monkeypatch.setattr(cli,'FILE',tmp_path/'private-history.json')
+    answers=iter(['private-cli@example.test','Synthetic-cli-password-123!','Synthetic-cli-password-123!'])
+    monkeypatch.setattr(cli,'private_input',lambda _:next(answers))
+    cli.setup()
+    with Session(database) as db:
+        actor=db.query(User).filter_by(email='private-cli@example.test').one();original_hash=actor.password_hash
+        headers(db,actor,'rehearsal-test-session')
+        publish(RatePublish(request_key=uuid.uuid4(),version_id=db.query(FeeRateVersion).one().id),actor,db.get(AuthSession,digest('rehearsal-test-session')),db)
+    cli.verify();cli.setup()  # Safe rerun never resets the private credentials.
+    output=capsys.readouterr().out
+    assert 'PASS:' in output and 'private-cli@example.test' not in output and 'Synthetic-cli-password' not in output
+    with Session(database) as db:assert db.query(User).filter_by(email='private-cli@example.test').one().password_hash==original_hash

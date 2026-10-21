@@ -80,7 +80,17 @@ stabilisation milestone. No production deployment or paid services are requested
     read backend counts and searchable, paginated records; see
     [admin directory validation](admin-directory-validation.md) and
     [frontend authentication](frontend-authentication.md).
-8. Add notifications, receipts, approved content, support, permission-scoped
+8. The [Organisation settings foundation](organisation-settings.md) provides
+   Admin-only draft/history/publication/effective dates for public contacts,
+   future registration payments/review wording and activation subscription
+   obligations. Existing records retain their original values. Unsupported
+   financial workflows and infrastructure/secrets have no enable switches.
+   The [fee currency extension and isolated rehearsal](fee-currency-and-settings-rehearsal.md)
+   adds unpublished management rate drafts, explicit publication and frozen
+   USD/ZiG fee settlement. It does not enable savings conversion. Migration 0010
+   was activated locally after normal backup/restore and preservation checks;
+   the normal management rate remains unpublished until explicit approval.
+   Add notifications, receipts, approved content, support, permission-scoped
    reporting and audit search. Choose email/storage providers before delivery
    integrations; marketing needs consent and unsubscribe handling.
 9. Build backup orchestration and monitoring after recovery targets, storage
