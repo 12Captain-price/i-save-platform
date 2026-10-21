@@ -1,0 +1,6 @@
+# Isolated UI validation; combine only with compose.auth-test.yaml.
+services:
+  backend:
+    ports: !override ["127.0.0.1:18010:8000"]
+  frontend:
+    ports: !override ["127.0.0.1:13010:3000"]

@@ -1,70 +1,68 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { PublicLayout } from '@/components/site/PublicLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Wallet, Receipt, ShieldAlert } from 'lucide-react';
-
-export const Route = createFileRoute('/fees')({
-  head: () => ({ meta: [
-    { title: 'Fees — i-Save savings charges and disclosures' },
-    { name: 'description', content: 'Provisional fee information for i-Save savings membership and contributions.' },
-  ] }),
+﻿import { createFileRoute, Link } from "@tanstack/react-router";
+import { PublicLayout } from "@/components/site/PublicLayout";
+import { PageIntro } from "@/components/site/SiteSections";
+import { Button } from "@/components/ui/button";
+export const Route = createFileRoute("/fees")({
+  head: () => ({ meta: [{ title: "Fees and office payments | i-Save" }] }),
   component: Fees,
 });
-
 function Fees() {
   return (
     <PublicLayout>
-      <div className="mx-auto max-w-4xl px-6 py-12 md:py-20">
-        <div className="mb-12">
-          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.22em] text-primary">Fees and charges</p>
-          <h1 className="text-4xl font-bold sm:text-5xl">Fee information</h1>
-          <p className="mt-4 text-lg text-muted-foreground">
-            Provisional figures are shown below for demonstration only. These have not been approved as final policy by the organisation.
+      <div className="page-container max-w-5xl">
+        <PageIntro eyebrow="Fees and office payments" title="Understand what you are paying for.">
+          <p>
+            Registration fees and monthly subscriptions are separate from savings. No payment is
+            taken through this website.
           </p>
+        </PageIntro>
+        <div className="grid gap-5 md:grid-cols-2">
+          <section className="rounded-xl border border-border bg-card p-6">
+            <h2 className="text-xl font-semibold">Registration fee</h2>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              A registration-fee payment must be recorded and verified before authorised staff can
+              approve membership. Submitting an application or ticking a review checkbox does not
+              confirm payment.
+            </p>
+          </section>
+          <section className="rounded-xl border border-border bg-card p-6">
+            <h2 className="text-xl font-semibold">Monthly subscription</h2>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              Subscriptions begin in the calendar month following activation. Check your recorded
+              obligation for its amount and any configured due date. No overdue or penalty rules are
+              enabled.
+            </p>
+          </section>
         </div>
-
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card className="rounded-xl border border-border bg-card p-6">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary mb-4">
-              <Wallet className="h-5 w-5" />
-            </div>
-            <CardTitle>Registration fee</CardTitle>
-            <CardContent>
-              <p className="text-2xl font-bold">$20</p>
-              <p className="mt-2 text-sm text-muted-foreground">One-time, provisional. Charged when a membership application is approved.</p>
-            </CardContent>
-          </Card>
-          <Card className="rounded-xl border border-border bg-card p-6">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary mb-4">
-              <Receipt className="h-5 w-5" />
-            </div>
-            <CardTitle>Monthly subscription</CardTitle>
-            <CardContent>
-              <p className="text-2xl font-bold">$5</p>
-              <p className="mt-2 text-sm text-muted-foreground">Monthly, provisional. Tracked separately from savings contributions.</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="mt-12 rounded-md border border-destructive/20 bg-destructive/5 p-6">
-          <div className="flex gap-3 mb-3">
-            <ShieldAlert className="h-5 w-5 shrink-0 text-destructive" />
-            <h3 className="text-sm font-semibold text-destructive">Important disclosure</h3>
+        <section className="mt-6 rounded-xl border border-primary/25 bg-primary/5 p-6">
+          <h2 className="text-xl font-semibold">Check the exact amount before paying</h2>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            The public site does not currently publish a live fee schedule. Contact the office for
+            current published amounts. After activation, your Fees page shows your own recorded
+            obligations and payments.
+          </p>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            Where an effective published rate was captured for a USD fee obligation, authorised
+            staff can show its exact USD or ZiG full-payment options before payment. Existing
+            obligations retain their captured amounts and rates. No savings conversion is available.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Button asChild>
+              <Link to="/contact">Confirm fees with the office</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link to="/login">Log in to view your fees</Link>
+            </Button>
           </div>
-          <p className="text-sm text-muted-foreground">
-            The $20 registration fee and $5 monthly fee shown above are unconfirmed configuration values used for demonstration purposes only. They do not represent approved organisation policy. The organisation will publish confirmed fee information before any charges apply.
-          </p>
-        </div>
-
-        <div className="mt-12 rounded-md border border-border bg-card p-6">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase mb-3">How fees are handled</h3>
-          <ul className="space-y-3 text-sm text-muted-foreground">
-            <li>All payments are made in person at the organisation’s office.</li>
-            <li>Fees are recorded by authorised staff and appear in your contribution history.</li>
-            <li>Subscription fees are tracked separately and are not added to your savings total.</li>
-            <li>No payments are accepted online through this website.</li>
-          </ul>
-        </div>
+        </section>
+        <p className="mt-6 text-sm text-muted-foreground">
+          Keep your office payment reference. Refund policy remains unconfigured; ask the office
+          about unresolved questions before paying.{" "}
+          <Link to="/disclosures" className="text-primary underline">
+            Read disclosures
+          </Link>
+          .
+        </p>
       </div>
     </PublicLayout>
   );

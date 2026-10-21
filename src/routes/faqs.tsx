@@ -1,71 +1,66 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { PublicLayout } from '@/components/site/PublicLayout';
-import { faqs } from '@/lib/portal/demo';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { HelpCircle, Users, Wallet, Layers, ShieldCheck } from 'lucide-react';
-
-const CATEGORY_ICONS: Record<string, typeof HelpCircle> = {
-  Membership: Users,
-  Contributions: Wallet,
-  Plans: Layers,
-  Fees: ShieldCheck,
-};
-
-export const Route = createFileRoute('/faqs')({
-  head: () => ({ meta: [
-    { title: 'FAQs — Frequently asked questions about i-Save' },
-    { name: 'description', content: 'Answers to common questions about i-Save membership, savings plans, fees and contributions.' },
-  ] }),
+﻿import { createFileRoute, Link } from "@tanstack/react-router";
+import { PublicLayout } from "@/components/site/PublicLayout";
+import { PageIntro } from "@/components/site/SiteSections";
+export const Route = createFileRoute("/faqs")({
+  head: () => ({ meta: [{ title: "Frequently asked questions | i-Save" }] }),
   component: FAQs,
 });
-
+const questions = [
+  [
+    "Does applying create a login?",
+    "No. Your details are saved as a Pending membership application. Account activation and password setup are separate steps after authorised review.",
+  ],
+  [
+    "Can I enrol in a savings plan now?",
+    "No published plan terms are available for enrolment yet. You can record an optional savings-category expression of interest. This does not approve a plan or accept terms.",
+  ],
+  [
+    "Where do I pay?",
+    "Payments are handled at the office, not online. Ask authorised staff to show the exact obligation and available payment currencies before you pay. Keep your receipt or reference.",
+  ],
+  [
+    "Are fees part of my savings?",
+    "No. Registration fees and subscriptions remain separate from savings. Your Fees page shows your recorded obligations and payments after account activation.",
+  ],
+  [
+    "When do subscriptions start?",
+    "In the calendar month following activation. Any configured due date belongs to the recorded obligation; overdue and penalty rules are not enabled.",
+  ],
+  [
+    "How long will review take?",
+    "No review deadline is promised. Contact the office for application follow-up and avoid duplicate submissions.",
+  ],
+  [
+    "Will the website send me an email?",
+    "Submitting an application does not mean an email was sent. Account-setup delivery depends on available delivery configuration and confirmed provider results.",
+  ],
+  [
+    "I submitted incorrect information. Should I apply again?",
+    "Contact the office with the name and email used to apply. Repeated submissions receive a generic acknowledgement and do not update the original record. Never send your password.",
+  ],
+];
 function FAQs() {
-  const categories = [...new Set(faqs.filter(f => f.published).map(f => f.category))];
   return (
     <PublicLayout>
-      <div className="mx-auto max-w-3xl px-6 py-12 md:py-20">
-        <div className="mb-12">
-          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.22em] text-primary">FAQs</p>
-          <h1 className="text-4xl font-bold sm:text-5xl">Frequently asked questions</h1>
-          <p className="mt-4 text-lg text-muted-foreground">
-            Find answers about membership, savings plans, fees, contributions and support.
-          </p>
+      <div className="page-container max-w-3xl">
+        <PageIntro eyebrow="Help and guidance" title="Frequently asked questions">
+          <p>Understand applications, payments and account access before you begin.</p>
+        </PageIntro>
+        <div className="space-y-3">
+          {questions.map(([question, answer]) => (
+            <details key={question} className="rounded-xl border border-border bg-card p-5">
+              <summary className="cursor-pointer text-base font-semibold">{question}</summary>
+              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{answer}</p>
+            </details>
+          ))}
         </div>
-
-        <div className="space-y-4">
-          {categories.map(category => {
-            const catFaqs = faqs.filter(f => f.category === category && f.published).sort((a, b) => a.order - b.order);
-            const Icon = CATEGORY_ICONS[category] || HelpCircle;
-            return (
-              <Accordion key={category} type="single" collapsible className="w-full">
-                <AccordionItem key={category} value="item" className="rounded-md border border-border bg-card">
-                  <AccordionTrigger className="flex items-center justify-between w-full py-4 text-left text-sm font-medium">
-                    <div className="flex items-center gap-3">
-                      <Icon className="h-4 w-4 shrink-0 text-portal-accent" />
-                      <span>{category}</span>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="py-4">
-                    <div className="space-y-4">
-                      {catFaqs.map(f => (
-                                        <div key={f.id} className="pt-4 border-t border-border/50 first:pt-0 first:border-0">
-                          <h3 className="text-sm font-semibold">{f.question}</h3>
-                          <p className="mt-2 text-sm text-muted-foreground">{f.answer}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            );
-          })}
-        </div>
-
-        <div className="mt-12 rounded-md border border-border bg-card p-6">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase mb-3">Still need help?</h3>
-          <p className="text-sm text-muted-foreground mb-4">Contact the office team if your question isn’t answered here.</p>
-          <a href="/contact" className="text-sm text-primary hover:underline">Contact us <span className="ml-1">→</span></a>
-        </div>
+        <p className="mt-6 text-sm text-muted-foreground">
+          Still need help?{" "}
+          <Link to="/contact" className="text-primary underline underline-offset-4">
+            Contact the office
+          </Link>
+          .
+        </p>
       </div>
     </PublicLayout>
   );
