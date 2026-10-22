@@ -1,5 +1,8 @@
 # Registration fee and membership workflow
 
+The subsequent [recurring subscriptions and financial reporting milestone](recurring-subscriptions.md) adds monthly catch-up generation, explicit subscription separation, operational queues and source-reconciled reports. Earlier statements below about recurring generation being unavailable describe the prior milestone. See the new report for current activation and validation status.
+
+
 The subsequent [savings contributions and reconciliation milestone](savings-contributions.md) introduces ledger-backed, currency-separated confirmed savings. Legacy Verified contribution rows do not count as reconciled savings. Registration fees and subscriptions remain separate; existing amounts, obligations and accepted terms are unchanged.
 
 Local activation and test evidence are recorded in

@@ -18,6 +18,7 @@ export const settingLabels = {
   subscription_currency: "Subscription currency",
   subscription_start: "Subscription start rule",
   subscription_due_day: "Subscription due day (optional)",
+  subscription_separation: "Subscription recorder/verifier separation",
   review_acknowledgement: "Required reviewer acknowledgement wording",
   require_national_id: "Require National ID number",
   require_residence_evidence: "Require proof of residence",
@@ -78,12 +79,13 @@ const groups: { title: string; description: string; keys: Key[] }[] = [
   {
     title: "Monthly subscription",
     description:
-      "Future activations create obligations using these settings. Existing obligations are retained.",
+      "New activation and recurring obligations freeze these settings at creation. Existing obligations stay unchanged. New payment recording snapshots separation; unset requires a different verifier.",
     keys: [
       "subscription_amount",
       "subscription_currency",
       "subscription_start",
       "subscription_due_day",
+      "subscription_separation",
     ],
   },
   {
@@ -319,6 +321,12 @@ function SettingsEditor({
                           Seven-day periods from enrolment start
                         </option>
                         <option value="monday">Monday-to-Sunday calendar weeks</option>
+                      </select>
+                    ) : key === "subscription_separation" ? (
+                      <select id={"settings-"+key} className={fieldClass} value={String(terms[key]??"")} onChange={e=>setTerms({...terms,[key]:e.target.value||null})}>
+                        <option value="">Not approved — different verifier required</option>
+                        <option value="recorder_separate">Different verifier required</option>
+                        <option value="same_actor_allowed">Same employee with both permissions (explicit approval required)</option>
                       </select>
                     ) : key === "savings_separation" ? (
                       <select

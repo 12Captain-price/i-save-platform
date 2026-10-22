@@ -530,7 +530,7 @@ def test_settings_migration_preserves_baseline_and_serialises_changes(migration_
     require_current_schema(database)
 
 
-def test_fee_rates_and_subscription_concurrent_settlement(migration_database):
+def test_fee_rates_and_subscription_concurrent_settlement(migration_database,monkeypatch):
     from concurrent.futures import ThreadPoolExecutor
     from sqlalchemy.orm import Session
     from app.bootstrap import bootstrap
@@ -565,6 +565,13 @@ def test_fee_rates_and_subscription_concurrent_settlement(migration_database):
         membership.record_payment(db,actor,app_id,PaymentRecord(amount='20',currency='USD',payment_date='2026-01-01',reference='FEE-RACE-REG'));db.commit()
         membership.verify_payment(db,actor,app_id);db.commit();membership.approve(db,actor,app_id);db.commit();membership.activate(db,actor,app_id);db.commit()
         approval=db.get(MembershipApproval,app_id);sub=db.query(Subscription).filter_by(member_id=approval.member_id).one();sub_id=sub.id
+        # This race test explicitly approves same-person subscription handling
+        # in synthetic settings; the unconfigured default is tested separately.
+        from tests.test_recurring_reports import settings
+        settings(db,actor,subscription_separation='same_actor_allowed')
+        from datetime import datetime,timezone
+        billing_time=datetime.fromisoformat(sub.period_month+'-01').replace(tzinfo=timezone.utc)
+        monkeypatch.setattr(fee_currency,'now',lambda:billing_time)
     payment=PaymentRecord(amount='170',currency='ZWG',payment_date='2026-01-01',reference='FEE-RACE-SUB')
     def settle(action):
         with Session(database) as db:

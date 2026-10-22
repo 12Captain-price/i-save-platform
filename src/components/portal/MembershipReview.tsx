@@ -62,7 +62,7 @@ export function MembershipReview({id,onChange}:{id:number;onChange:()=>void}) {
   </section>;
 }
 
-type Fees = {registration_fees:{amount:string;currency:string;status:string;reference:string;payment_date:string|null;payment_amount?:string;payment_currency?:string;obligation?:FeeQuote|null}[];subscriptions:{amount:string;currency:string;period_month:string;status:string;due_date:string|null;obligation?:FeeQuote|null;payment?:{amount:string;currency:string;reference:string;payment_date:string;verified_at:string|null}|null}[]};
+type Fees = {registration_fees:{amount:string;currency:string;status:string;reference:string;payment_date:string|null;payment_amount?:string;payment_currency?:string;obligation?:FeeQuote|null}[];subscriptions:{amount:string;currency:string;period_month:string;status:string;payment_status?:string;due_date:string|null;obligation?:FeeQuote|null;payment?:{amount:string;currency:string;reference:string;payment_date:string;verified_at:string|null}|null}[]};
 export function MemberFees() {
   const result=useRecords<Fees>('/api/membership/fees');
   if(result.error)return <Feedback {...result}/>;

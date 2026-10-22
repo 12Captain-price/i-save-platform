@@ -1,0 +1,11 @@
+# Disposable synthetic browser/rehearsal only. Never combine with normal compose.yaml.
+services:
+  backend:
+    image: isave-recurring-test-backend
+    environment:
+      APP_ENV: test
+      DOCUMENT_SCAN_TEST_ONLY: "true"
+    ports: !override ["127.0.0.1:18040:8000"]
+  frontend:
+    image: isave-recurring-test-frontend
+    ports: !override ["127.0.0.1:13040:3000"]

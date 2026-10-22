@@ -45,6 +45,12 @@ stabilisation milestone. No production deployment or paid services are requested
 
 The [savings contributions and reconciliation milestone](savings-contributions.md) adds pending office recording, separate verification/reconciliation, append-only currency ledgers, linked reversals, owned history and ledger-backed summaries. Its consolidated report records validation, preservation and activation status; it does not approve unresolved policy or production operation.
 
+The [recurring subscriptions and financial reports milestone](recurring-subscriptions.md)
+adds idempotent catch-up of activated memberships, Admin preview/run, explicit
+subscription separation and source-reconciled currency-separated reports/CSV.
+No scheduler, normal obligations or payment records are created merely for tests.
+See its final validation/activation section for deployment status and remaining policy.
+
 ## Ordered implementation backlog
 
 The combined [registration-documents and plan-enrolment milestone](registration-documents-enrolment.md) adds private evidence review, future-application requirement snapshots, explicit plan approval/publication, immutable member acceptance and separate eight-calendar-month enrolment activation. No plan is automatically published, no existing application is retrospectively verified, and no enrolment action posts money. See the consolidated report for validation, local migration activation, scanner/retention dependencies and isolated manual rehearsal.

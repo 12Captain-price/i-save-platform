@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { navigation, screenTitle, type Role } from "@/lib/portal/navigation";
 import { OrganisationOverview, MembersDirectory } from "./AdminDataScreens";
 import { SubscriptionPayments } from "./SubscriptionPayments";
+import { FinancialReports } from "./FinancialOperations";
 import { OrganisationSettings } from "./OrganisationSettings";
 import { PlanDrafts } from "./PlanDrafts";
 import { MemberPlans } from './MemberPlans';
@@ -18,9 +19,10 @@ import { ApplicationScreens } from "./ApplicationScreens";
 import { AssistedRegistration } from "@/components/auth/AssistedRegistration";
 const supported: Record<Role, string[]> = {
   member: ["contributions", "dashboard", "fees", "plans", "applications"],
-  staff: ["contributions", "dashboard", "registrations", "assist-registration", "plan-applications"],
-  finance: ["contributions", "verification", "reconciliation", "ledger", "dashboard", "fees"],
+  staff: ["payments", "reports", "contributions", "dashboard", "registrations", "assist-registration", "plan-applications"],
+  finance: ["reports", "contributions", "verification", "reconciliation", "ledger", "dashboard", "fees"],
   admin: [
+    "reports",
     "contributions",
     "dashboard",
     "registrations",
@@ -44,6 +46,8 @@ const descriptions: Record<string, string> = {
   members: "Find recorded members and inspect their account links.",
   fees: "View fee obligations and recorded payments. Fees remain separate from savings.",
   finance: "Record and verify subscription payments with separate permissions.",
+  payments: "Record subscription payments and review their verification status. Fees remain separate from savings.",
+  reports: "Reconcile fees, subscription obligations and savings ledger movements with separate currencies and source records.",
   settings: "Manage versioned drafts and publish changes to future records.",
   plans: "Review plans and exact terms. Drafts require explicit approval and publication before they are offered.",
   'plan-applications':'Review accepted plan terms and activate enrolments with separate permissions.',
@@ -304,7 +308,7 @@ export function AuthenticatedWorkspace({ role, screen }: { role: Role; screen: s
                 "This service is awaiting implementation. No simulated transactions are shown."}
             </p>
           </div>
-          {screen === "contributions" || (role === "finance" && ["verification","reconciliation","ledger"].includes(screen)) ? <SavingsWorkspace key={screen} member={role === "member"} initialStatus={screen === "verification" ? "Pending verification" : screen === "reconciliation" ? "Verified" : screen === "ledger" ? "Confirmed" : ""}/> : (role === "staff" || role === "finance") && screen === "dashboard" ? (
+          {screen === "reports" && role !== "member" ? <FinancialReports/> : screen === "contributions" || (role === "finance" && ["verification","reconciliation","ledger"].includes(screen)) ? <SavingsWorkspace key={screen} member={role === "member"} initialStatus={screen === "verification" ? "Pending verification" : screen === "reconciliation" ? "Verified" : screen === "ledger" ? "Confirmed" : ""}/> : role === "staff" && screen === "payments" ? <SubscriptionPayments/> : (role === "staff" || role === "finance") && screen === "dashboard" ? (
             <TaskHome role={role} />
           ) : (role === "admin" && screen === "finance") ||
             (role === "finance" && screen === "fees") ? (

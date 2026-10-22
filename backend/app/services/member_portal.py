@@ -76,6 +76,7 @@ def fee_records(db, member):
         payment=db.get(SubscriptionFeePayment,s.id)
         subscriptions.append({'amount':str(s.amount),'currency':s.currency,'period_month':s.period_month,'status':s.status if s.status in {'Pending','Paid'} else 'Requires office review','due_date':s.due_date if db.get(SubscriptionSettingsSnapshot,s.id) else None,
             'obligation':quote(db,db.query(FeeObligation).filter_by(subscription_id=s.id).one_or_none()),
+            'payment_status':'Paid' if payment and payment.verified_at else 'Pending verification' if payment else 'Unpaid' if s.status=='Pending' else 'Legacy status requires review',
             'payment':None if not payment else {'amount':str(payment.amount),'currency':payment.currency,'reference':payment.reference,'payment_date':payment.payment_date,'verified_at':payment.verified_at}})
     return {'registration_fees':result,'subscriptions':subscriptions}
 

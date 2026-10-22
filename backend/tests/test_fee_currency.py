@@ -180,7 +180,7 @@ def test_registration_zig_frozen_rate_actual_payment_and_savings_untouched(clien
     assert db.query(Contribution).filter_by(member_id=approval.member_id).count()==0
 
 
-def test_subscription_exact_payment_separate_verification_reference_uniqueness_and_history(client,db,accounts,pending):
+def test_subscription_exact_payment_separate_verification_reference_uniqueness_and_history(client,db,accounts,pending,monkeypatch):
     auth=headers(db,accounts['administrator'])
     row,_=draft(client,auth);publish(client,auth,row['version'])
     assert post(client,auth,pending,'payment',PAY).status_code==200
@@ -190,6 +190,10 @@ def test_subscription_exact_payment_separate_verification_reference_uniqueness_a
     approval=db.get(MembershipApproval,pending.id);sub=db.query(Subscription).filter_by(member_id=approval.member_id).one()
     body={**PAY,'amount':'170','currency':'ZWG','reference':'Synthetic-subscription-receipt'}
     target=f'{SUB}/{sub.id}'
+    # Activation creates next month's obligation; paying it before that month
+    # is now explicitly unsupported. Advance only the fee service's test clock.
+    from datetime import datetime,timezone
+    monkeypatch.setattr(fee_currency,'now',lambda:datetime.fromisoformat(sub.period_month+'-01').replace(tzinfo=timezone.utc))
     assert client.post(target+'/payment',headers=auth,json={**body,'reference':PAY['reference']}).status_code==409
     assert client.post(target+'/payment',headers=auth,json={**body,'amount':'169.99'}).status_code==400
     assert client.post(target+'/payment',headers=auth,json=body).status_code==200
@@ -197,11 +201,14 @@ def test_subscription_exact_payment_separate_verification_reference_uniqueness_a
     assert sub.status=='Pending'
     assert client.post(target+'/payment',headers=auth,json={**body,'amount':'5','currency':'USD'}).status_code==409
     row2,_=draft(client,auth,'36',row['version']);publish(client,auth,row2['version'])
-    assert client.post(target+'/verify',headers=auth,json={}).status_code==200
-    assert client.post(target+'/verify',headers=auth,json={}).status_code==200
+    assert client.post(target+'/verify',headers=auth,json={}).status_code==403
+    grant(db,accounts['finance'],'subscription-fees:verify')
+    verifier=headers(db,accounts['finance'])
+    assert client.post(target+'/verify',headers=verifier,json={}).status_code==200
+    assert client.post(target+'/verify',headers=verifier,json={}).status_code==200
     db.refresh(sub);payment=db.get(SubscriptionFeePayment,sub.id)
     assert sub.amount==Decimal('5') and sub.currency=='USD' and sub.status=='Paid'
-    assert payment.amount==Decimal('170') and payment.currency=='ZWG' and payment.verified_by==accounts['administrator'].id
+    assert payment.amount==Decimal('170') and payment.currency=='ZWG' and payment.verified_by==accounts['finance'].id
     assert db.query(AuditEvent).filter_by(action='subscription_payment_verified').count()==1
     # That receipt cannot be reused on another application's registration.
     fresh=application(db,'cross-fee-reference')
@@ -216,7 +223,9 @@ def test_subscription_record_and_verify_have_separate_permissions(client,db,acco
     assert client.post(SUB+'/1/'+action,headers=headers(db,actor),json=PAY if action=='payment' else {}).status_code==403
 
 
-def test_staff_with_both_permissions_can_record_and_verify(client,db,accounts):
+def test_staff_with_both_permissions_can_record_and_verify_only_with_explicit_subscription_policy(client,db,accounts):
+    from tests.test_recurring_reports import settings
+    settings(db,accounts['administrator'],subscription_separation='same_actor_allowed')
     actor=accounts['staff'];grant(db,actor,'subscriptions:read','subscription-fees:record','subscription-fees:verify')
     auth=headers(db,actor);sub=db.query(Subscription).filter_by(member_id=accounts['member'].member.id).one()
     assert client.post(f'{SUB}/{sub.id}/payment',headers=auth,json={**PAY,'amount':'5','reference':'staff-full-payment'}).status_code==200

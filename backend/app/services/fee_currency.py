@@ -100,13 +100,17 @@ def subscription_payment(db,actor,identifier,body):
         if (old.amount,old.currency,old.payment_date,old.reference.lower())==(body.amount,body.currency,body.payment_date,body.reference.lower()):return
         raise APIError(409,'conflict','A payment already exists. Corrections/refunds are unavailable.')
     if sub.status!='Pending':raise APIError(409,'conflict','Only an unpaid pending obligation can receive payment')
+    if sub.period_month>now().astimezone(ZoneInfo('Africa/Harare')).strftime('%Y-%m'):
+        raise APIError(409,'advance_unavailable','Advance subscription payments are unavailable until an approved policy exists')
     obligation=db.query(FeeObligation).filter_by(subscription_id=sub.id).one_or_none()
     if not obligation:obligation=create_obligation(db,actor,sub.amount,sub.currency,subscription_id=sub.id,at=sub.created_at,legacy=True)
     validate_payment(obligation,body.amount,body.currency)
     if body.payment_date>now().astimezone(ZoneInfo('Africa/Harare')).date():raise APIError(400,'bad_request','Payment date cannot be in the future')
     key=check_reference(db,body.reference)
     db.add(SubscriptionFeePayment(subscription_id=sub.id,amount=body.amount,currency=body.currency,reference=body.reference,reference_key=key,payment_date=body.payment_date,recorded_by=actor.id,recorder_email=actor.email))
-    audit(db,actor,'subscription_payment_recorded',obligation.id,{'amount':str(body.amount),'currency':body.currency,'reference':body.reference,'payment_date':str(body.payment_date),'rate_version':obligation.rate_version_id})
+    from app.services.business_settings import active
+    version,terms=active(db)
+    audit(db,actor,'subscription_payment_recorded',obligation.id,{'amount':str(body.amount),'currency':body.currency,'reference':body.reference,'payment_date':str(body.payment_date),'rate_version':obligation.rate_version_id,'separation':terms.get('subscription_separation') or 'recorder_separate','settings_version':version})
 
 
 def verify_subscription(db,actor,identifier):
@@ -115,6 +119,10 @@ def verify_subscription(db,actor,identifier):
     if payment.verified_at:return
     if sub.status!='Pending':raise APIError(409,'conflict','Subscription needs reconciliation')
     obligation=db.query(FeeObligation).filter_by(subscription_id=sub.id).one()
+    recorded=db.query(AuditEvent).filter_by(event_type='fee_currency',action='subscription_payment_recorded',target_table='fee_obligations',target_id=str(obligation.id)).order_by(AuditEvent.id).first()
+    separation=json.loads(recorded.details).get('separation','recorder_separate') if recorded else 'recorder_separate'
+    if separation!='same_actor_allowed' and actor.id==payment.recorded_by:
+        raise APIError(403,'separation_required','Subscription verification requires a different employee; registration-fee policy does not apply')
     validate_payment(obligation,payment.amount,payment.currency)
     payment.verified_at=now();payment.verified_by=actor.id;payment.verifier_email=actor.email
     sub.status='Paid';sub.paid_at=payment.verified_at

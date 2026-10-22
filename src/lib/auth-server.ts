@@ -162,6 +162,25 @@ async function membership(request: Request, url: URL) {
   return Response.json(await response.json(), { headers });
 }
 
+async function financialOperations(request: Request,url: URL) {
+ const path=url.pathname;
+ if(!['/api/financial/reports','/api/financial/subscriptions/preview','/api/financial/subscriptions/run'].includes(path))return message('Not found.',404);
+ const writing=path.endsWith('/run');
+ if(request.method!==(writing?'POST':'GET'))return message('Method not allowed.',405);
+ const token=tokenFrom(request);if(!token)return expired(request);
+ if(writing&&(request.headers.get('origin')!==url.origin||request.headers.get('x-isave-request')!=='1'))return message('Reload and retry.',403);
+ const allowed=path.endsWith('/reports')?['start','end','currency','category','skip','limit','export']:['through'];
+ for(const key of url.searchParams.keys())if(!allowed.includes(key)||url.searchParams.getAll(key).length!==1)return message('Unsupported parameters.',400);
+ const body=writing?await boundedBody(request,4096):undefined;
+ if(body===null)return message('Request too large.',413);
+ const endpoint=new URL('/api/v1'+path.slice(4),process.env['AUTH_API_ORIGIN']??'http://127.0.0.1:8000');endpoint.search=url.search;
+ const response=await fetch(endpoint,{method:request.method,headers:{Authorization:`Bearer ${token}`,...(writing?{'Content-Type':'application/json'}:{})},...(body!==undefined?{body}:{}),cache:'no-store',redirect:'error',signal:AbortSignal.timeout(30000)});
+ if(response.status===401)return expired(request);
+ if(!response.ok){const data=await response.json().catch(()=>({}));return message(typeof data.error?.message==='string'?data.error.message:'Financial request could not be completed. Retry safely.',response.status);}
+ if(response.headers.get('content-type')?.startsWith('text/csv'))return new Response(await response.text(),{headers:{'Content-Type':'text/csv','Content-Disposition':'attachment; filename="financial-report.csv"','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
+ return Response.json(await response.json(),{headers:{'Cache-Control':'no-store'}});
+}
+
 async function subscriptionPayments(request: Request, url: URL) {
   const match = url.pathname.match(
     /^\/api\/membership\/subscriptions(?:\/([1-9][0-9]{0,9})\/(payment|verify))?$/,
@@ -176,7 +195,7 @@ async function subscriptionPayments(request: Request, url: URL) {
     process.env["AUTH_API_ORIGIN"] ?? "http://127.0.0.1:8000",
   );
   for (const [key, value] of url.searchParams) {
-    if (writing || !["skip", "limit"].includes(key) || endpoint.searchParams.has(key))
+    if (writing || !["skip", "limit", "q", "status"].includes(key) || endpoint.searchParams.has(key))
       return message("Unsupported parameters.", 400);
     endpoint.searchParams.set(key, value);
   }
@@ -522,6 +541,7 @@ export async function handleAuthentication(request: Request): Promise<Response |
   const url = new URL(request.url);
   const path = url.pathname;
   if (
+    !path.startsWith("/api/financial/") &&
     !path.startsWith("/api/savings") &&
     !path.startsWith("/api/public/") &&
     !path.startsWith("/api/application-documents/") &&
@@ -563,6 +583,7 @@ export async function handleAuthentication(request: Request): Promise<Response |
       path.startsWith("/api/admin/fee-rates")
     )
       return await organisationSettings(request, url);
+    if (path.startsWith("/api/financial/")) return await financialOperations(request,url);
     if (path.startsWith("/api/admin/plan-drafts")) return await planDrafts(request, url);
     if (path.startsWith("/api/membership/")) return await membership(request, url);
     if (path === "/api/registration" || path === "/api/registration/assisted") {

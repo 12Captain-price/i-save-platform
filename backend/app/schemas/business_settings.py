@@ -19,6 +19,7 @@ class BusinessTerms(BaseModel):
     subscription_start: Literal['next_calendar_month'] | None = None
     # Days 29–31 require an approved short-month rule. Do not invent one.
     subscription_due_day: int | None = Field(None, ge=1, le=28, strict=True)
+    subscription_separation: Literal['recorder_separate','same_actor_allowed'] | None = None
     review_acknowledgement: str | None = Field(None, max_length=2000)
     require_national_id: bool = Field(default=False, strict=True)
     require_residence_evidence: bool = Field(default=False, strict=True)
@@ -36,7 +37,7 @@ class BusinessTerms(BaseModel):
         return self
 
     def missing(self):
-        optional = {'savings_separation', 'savings_week_start', 'subscription_due_day', 'document_retention_days', 'require_national_id', 'require_residence_evidence', 'require_income_evidence', 'require_evidence_acceptance'}
+        optional = {'subscription_separation','savings_separation', 'savings_week_start', 'subscription_due_day', 'document_retention_days', 'require_national_id', 'require_residence_evidence', 'require_income_evidence', 'require_evidence_acceptance'}
         return [k for k,v in self.model_dump().items() if k not in optional and not v]
 
 
