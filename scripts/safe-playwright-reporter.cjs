@@ -14,7 +14,11 @@ module.exports = class {
   onTestEnd(test, result) {
     this.counts[result.status] = (this.counts[result.status] ?? 0) + 1;
     console.log(result.status + ": " + test.title);
-    for (const error of result.errors ?? []) console.log(safe(error.message));
+    for (const error of result.errors ?? []) {
+      console.log(safe(error.message));
+      const location = error.stack?.match(/e2e[\\/][^:\r\n]+:\d+:\d+/)?.[0];
+      if (location) console.log('Test location: '+location);
+    }
   }
   onEnd(result) {
     console.log(JSON.stringify({ status: result.status, counts: this.counts }));

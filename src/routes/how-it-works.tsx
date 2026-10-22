@@ -25,8 +25,7 @@ function HowItWorks() {
             payment does not approve a savings plan.
           </p>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Savings-category interests can be recorded now. Contribution amounts and detailed plan
-            terms are awaiting approval; enrolment is not available yet.
+            Savings-category interest is not enrolment. Activated members may apply separately for effective published plans after reading and acknowledging the complete terms. Authorised review and enrolment activation remain separate steps; neither creates a payment.
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
             <Button asChild>

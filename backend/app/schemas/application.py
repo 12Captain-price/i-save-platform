@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_vali
 from typing_extensions import Annotated
 
 from app.schemas.common import Email, TimestampSchema
+from app.schemas.evidence import EvidenceUpload
 
 Status = Annotated[str, StringConstraints(min_length=1, max_length=50)]
 
@@ -52,9 +53,20 @@ class PublicRegistration(BaseModel):
     reason: Annotated[Optional[str], Field(max_length=1000)] = None
     preferred_category: Optional[Literal['asset','holiday','emergency','retrenchment','education']] = None
     interest_notice_version: Annotated[Optional[str], Field(max_length=80)] = None
+    national_id: str | None = Field(default=None, min_length=1, max_length=100, pattern=r'^[A-Za-z0-9 /-]+$')
+    income_source: Literal['employed', 'self_employed', 'pension', 'other'] | None = None
+    evidence: list[EvidenceUpload] = Field(default_factory=list, max_length=3)
+    evidence_consent: StrictBool = False
+    evidence_consent_version: str | None = Field(default=None, max_length=80)
 
     @model_validator(mode='after')
     def validate_interest(self):
+        from app.schemas.evidence import CONSENT_VERSION
+        if self.national_id or self.income_source or self.evidence or self.evidence_consent:
+            if not self.evidence_consent or self.evidence_consent_version != CONSENT_VERSION:
+                raise ValueError('Current evidence consent must be acknowledged')
+        if len({f.kind for f in self.evidence}) != len(self.evidence):
+            raise ValueError('One upload per evidence type is supported')
         from app.registration_options import OPTIONS
         if self.preferred_category is not None:
             if self.interest_notice_version != OPTIONS['version']:

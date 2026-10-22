@@ -129,3 +129,9 @@ from app.routers.fee_rates import router as fee_rates_router
 from app.routers.subscription_payments import router as subscription_payments_router
 app.include_router(fee_rates_router)
 app.include_router(subscription_payments_router)
+from app.routers.evidence import router as evidence_router
+from app.routers.enrolment import router as enrolment_router
+from app.security.body_limit import EvidenceBodyLimit
+app.include_router(evidence_router)
+app.include_router(enrolment_router)
+app.add_middleware(EvidenceBodyLimit)

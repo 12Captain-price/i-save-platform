@@ -31,7 +31,7 @@ describe('Authenticated frontend', () => {
   it('uses the original shell with an unavailable state and a real logout action', async () => {
     const fetcher = vi.fn().mockImplementation(async (path: string) => path.endsWith('logout') ? new Response(null, { status: 204 }) : Response.json(member));
     vi.stubGlobal('fetch', fetcher);
-    render(<AuthProvider><AuthenticatedWorkspace role="member" screen="plans" /></AuthProvider>);
+    render(<AuthProvider><AuthenticatedWorkspace role="member" screen="profile" /></AuthProvider>);
     await screen.findByText('This screen is not available yet');
     fireEvent.click(screen.getByRole('button', { name: 'Log out' }));
     await screen.findByText('Login required');

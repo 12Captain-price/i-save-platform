@@ -19,7 +19,7 @@ IMPACTS = {
     'contacts': 'Public Contact, footer, registration help and application follow-up use the effective published contacts on their next load. Publishing does not send email.',
     'registration': 'Future first payment recordings snapshot the fee amount/currency and reviewer wording. Existing recorded payments and their approval requirements do not change.',
     'subscriptions': 'Future activations create their first subscription obligation using the effective amount, currency and optional due day. Existing obligations and activation start months do not change. Recurring obligation generation is not enabled.',
-    'review': 'Future first payment recordings snapshot reviewer wording. Verified fee and explicit acknowledgement remain mandatory. No identity-document or eligibility rules are added.',
+    'review': 'Future first payment recordings snapshot reviewer wording. Verified fee and explicit acknowledgement remain mandatory. Document requirements are snapshotted at new application submission; existing applications are not retrospectively verified or subjected to new document requirements. Retention is a recorded policy decision only; automatic deletion is not implemented.',
 }
 
 
@@ -70,7 +70,7 @@ def history(actor=Depends(access('settings:read')), db:Session=Depends(get_db)):
     return {'active_version':current, 'active_terms':terms, 'head_version':latest_id(db),
         'versions':[presented(v) for v in versions],
         'publications':[{'version':p.version_id,'effective_at':p.effective_at,'actor_email':p.actor_email,'recorded_at':p.recorded_at} for p in publications],
-        'impacts':IMPACTS, 'unsupported':['Withdrawals','Refunds','Returns','Penalties','Automated recurring billing','Identity-document and eligibility rules','SMTP credentials and infrastructure'],
+        'impacts':IMPACTS, 'unsupported':['Withdrawals','Refunds','Returns','Penalties','Automated recurring billing','Automatic document deletion / retention enforcement','Additional eligibility rules','SMTP credentials and infrastructure'],
         'preview':None if not versions else {'version':versions[0].id, 'blockers':blockers(db,versions[0]),
             'changes':{k:{'from':terms[k],'to':v} for k,v in json.loads(versions[0].snapshot).items() if v!=terms[k]}}}
 

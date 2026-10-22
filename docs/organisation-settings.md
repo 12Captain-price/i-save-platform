@@ -176,3 +176,6 @@ handling, publication cancellation, recurring billing and external email
 delivery remain outside this foundation. There is one existing Starlette/httpx
 deprecation warning in backend tests and existing frontend build-tool warnings.
 No production sending, push or merge was performed.
+# Current extension: private registration documents
+
+See [registration documents and plan enrolment](registration-documents-enrolment.md) for the published requirement controls and submission-time snapshots. Existing settings/history remain unchanged; old versions read with unenforced document defaults. Retention can remain unset, and configuring a period does not implement deletion. Earlier validation below describes the original settings milestone.

@@ -66,7 +66,7 @@ def test_incomplete_version_history_retry_actor_and_no_side_effects(client, db, 
     assert db.query(AuditEvent).filter(AuditEvent.event_type=='plan_draft').count() == 2
     assert before == [db.query(m).count() for m in models]
     assert client.get('/api/v1/plans').json() == []
-    assert client.post(f'{URL}/{identifier}/publish', headers=auth, json={}).status_code == 404
+    assert client.post(f'{URL}/{identifier}/publish', headers=auth, json={}).status_code == 400
     assert client.get(URL+'?skip=1&limit=1', headers=auth).json() == {'items':[], 'total':1}
 
 

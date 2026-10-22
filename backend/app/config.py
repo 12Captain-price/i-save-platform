@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     app_env: str = "development"
     app_name: str = "i-Save Backend"
     app_debug: bool = True
+    document_scan_host: str = ''
+    document_scan_port: int = Field(default=3310, ge=1, le=65535)
+    document_scan_test_only: bool = False
 
     database_url: str = "sqlite:///./data/i_save_dev.db"
 

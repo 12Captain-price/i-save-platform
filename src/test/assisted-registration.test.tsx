@@ -1,3 +1,4 @@
+vi.mock('@/components/auth/RegistrationEvidence',async(importOriginal)=>({...await importOriginal<object>(),RegistrationEvidence:()=>null}));
 import {render,screen,fireEvent,waitFor} from '@testing-library/react';
 import {afterEach,it,expect,vi} from 'vitest';
 import {AssistedRegistration} from '@/components/auth/AssistedRegistration';

@@ -352,7 +352,7 @@ test("public pending registration and authorised Staff/Admin review without acti
     await expect(
       page.getByRole("button", { name: "Approve membership", exact: true }),
     ).toBeDisabled();
-    await expect(page.getByRole("checkbox")).toBeDisabled();
+    await expect(page.getByRole("region", { name: "Membership approval and registration fee" }).getByRole("checkbox")).toBeDisabled();
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true);

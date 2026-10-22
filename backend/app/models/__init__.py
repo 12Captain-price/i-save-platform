@@ -42,3 +42,4 @@ __all__ = [
 import app.models.plan_draft
 import app.models.business_settings
 import app.models.fee_currency
+import app.models.evidence_enrolment

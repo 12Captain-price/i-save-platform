@@ -119,6 +119,9 @@ def approve(db,actor,application_id):
     app=lock_application(db,application_id)
     if db.get(Approval,app.id):return
     check_pending(app);payment=db.get(Payment,app.id)
+    from app.services.evidence import approval_blockers
+    document_blockers = approval_blockers(db, app.id)
+    if document_blockers:raise APIError(409,'prerequisite_missing','; '.join(document_blockers))
     if not verified(payment,db):raise APIError(409,'prerequisite_missing','A verified registration fee is required')
     email=app.email.strip().lower();advisory(db,'membership-email:'+email)
     if db.query(User).filter(func.lower(User.email)==email).first():raise APIError(409,'conflict','Account linking requires administrator reconciliation')
@@ -163,6 +166,8 @@ def workflow(db,actor,application_id,mailer_available=False):
         obligation=db.query(Subscription).filter_by(member_id=approval.member_id,period_month=approval.subscription_start_month).one_or_none()
         subscription_due_day=obligation.due_date.day if obligation and obligation.due_date and db.get(SubscriptionSettingsSnapshot,obligation.id) else None
     blockers=[]
+    from app.services.evidence import approval_blockers
+    blockers.extend(approval_blockers(db, app.id))
     if 'membership:approve' not in codes:blockers.append('Membership approval permission required.')
     version,terms=application_policy(db,app.id)
     if not verified(payment,db):blockers.append('The registration fee must be verified against its configured amount and currency.')

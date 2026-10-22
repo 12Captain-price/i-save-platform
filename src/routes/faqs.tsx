@@ -12,7 +12,7 @@ const questions = [
   ],
   [
     "Can I enrol in a savings plan now?",
-    "No published plan terms are available for enrolment yet. You can record an optional savings-category expression of interest. This does not approve a plan or accept terms.",
+    "Only effective published plans are offered for a separate plan application by activated members. Read and acknowledge the complete terms before applying. Authorised review and activation are separate steps. A category expression of interest does not accept terms or enrol you.",
   ],
   [
     "Where do I pay?",

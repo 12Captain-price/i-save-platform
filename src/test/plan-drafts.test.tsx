@@ -49,3 +49,10 @@ it('treats a backend denial as a denial instead of an empty result', async () =>
   render(<PlanDrafts />); await screen.findByRole('heading', { name:'Access denied' });
   expect(screen.queryByText(/No drafts on this page/)).not.toBeInTheDocument();
 });
+
+it.each(['Unpublished draft', 'Approved - unpublished', 'Published / scheduled'])('uses the backend status on saved cards: %s', async (status) => {
+  auth.identity.permissions = ['plans:drafts:read'];
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({items:[{draft_id:9,version:2,status,terms:{category:'Education'},missing_decisions:[]}],total:1})));
+  render(<PlanDrafts />);
+  expect(await screen.findByText((text) => text.startsWith(status + ' \u00b7 version 2'))).toHaveTextContent('0 missing decisions');
+});

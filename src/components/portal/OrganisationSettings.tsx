@@ -17,9 +17,16 @@ export const settingLabels = {
   subscription_start: "Subscription start rule",
   subscription_due_day: "Subscription due day (optional)",
   review_acknowledgement: "Required reviewer acknowledgement wording",
+  require_national_id: "Require National ID number",
+  require_residence_evidence: "Require proof of residence",
+  require_income_evidence: "Require income evidence (alternative evidence for self-employment)",
+  require_evidence_acceptance:
+    "Require acceptance of all submitted current evidence before approval",
+  document_retention_days:
+    "Document retention policy in days (optional; deletion is not automated)",
 };
 type Key = keyof typeof settingLabels;
-type Terms = Record<Key, string | number | null>;
+type Terms = Record<Key, string | number | boolean | null>;
 type Version = {
   version: number;
   terms: Terms;
@@ -44,7 +51,9 @@ type State = {
   preview: null | {
     version: number;
     blockers: string[];
-    changes: Partial<Record<Key, { from: string | number | null; to: string | number | null }>>;
+    changes: Partial<
+      Record<Key, { from: string | number | boolean | null; to: string | number | boolean | null }>
+    >;
   };
 };
 const groups: { title: string; description: string; keys: Key[] }[] = [
@@ -74,10 +83,29 @@ const groups: { title: string; description: string; keys: Key[] }[] = [
     description: "The verified fee and explicit acknowledgement remain mandatory.",
     keys: ["review_acknowledgement"],
   },
+  {
+    title: "Private registration documents",
+    description:
+      "Effective requirements are captured for new applications only. Existing applications keep their submission requirements; none are retrospectively verified. Uploads require an operational malware scanner. Retention remains undecided until explicitly approved, and automatic deletion is unavailable.",
+    keys: [
+      "require_national_id",
+      "require_residence_evidence",
+      "require_income_evidence",
+      "require_evidence_acceptance",
+      "document_retention_days",
+    ],
+  },
 ];
 const fieldClass =
   "mt-2 w-full min-w-0 rounded-md border border-input bg-background px-3 py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
-const show = (v: string | number | null) => (v === null ? "Not configured" : String(v));
+const show = (v: string | number | boolean | null) =>
+  v === null
+    ? "Not configured"
+    : typeof v === "boolean"
+      ? v
+        ? "Required"
+        : "Not required"
+      : String(v);
 export function OrganisationSettings() {
   const { identity } = useAuth();
   if (!identity?.permissions.includes("settings:read"))
@@ -271,11 +299,21 @@ function SettingsEditor({
                     <label htmlFor={"settings-" + key} className="text-sm font-medium">
                       {settingLabels[key]}
                     </label>
-                    {key === "subscription_start" ? (
+                    {key.startsWith("require_") ? (
                       <select
                         id={"settings-" + key}
                         className={fieldClass}
-                        value={terms[key] ?? ""}
+                        value={String(terms[key] ?? false)}
+                        onChange={(e) => setTerms({ ...terms, [key]: e.target.value === "true" })}
+                      >
+                        <option value="false">Not required</option>
+                        <option value="true">Required for new applications</option>
+                      </select>
+                    ) : key === "subscription_start" ? (
+                      <select
+                        id={"settings-" + key}
+                        className={fieldClass}
+                        value={String(terms[key] ?? "")}
                         onChange={(e) => setTerms({ ...terms, [key]: e.target.value || null })}
                       >
                         <option value="">Not decided</option>
@@ -289,7 +327,7 @@ function SettingsEditor({
                         className={fieldClass}
                         rows={3}
                         maxLength={key === "office" ? 500 : 2000}
-                        value={terms[key] ?? ""}
+                        value={String(terms[key] ?? "")}
                         onChange={(e) => setTerms({ ...terms, [key]: e.target.value || null })}
                       />
                     ) : (
@@ -297,22 +335,28 @@ function SettingsEditor({
                         id={"settings-" + key}
                         className={fieldClass}
                         type={
-                          key.endsWith("_amount") || key === "subscription_due_day"
+                          key.endsWith("_amount") ||
+                          key === "subscription_due_day" ||
+                          key === "document_retention_days"
                             ? "number"
                             : key === "email"
                               ? "email"
                               : "text"
                         }
-                        step={key === "subscription_due_day" ? 1 : "0.01"}
+                        step={
+                          key === "subscription_due_day" || key === "document_retention_days"
+                            ? 1
+                            : "0.01"
+                        }
                         min={key === "subscription_due_day" ? 1 : "0.01"}
                         max={key === "subscription_due_day" ? 28 : undefined}
                         maxLength={key.endsWith("_currency") ? 3 : undefined}
-                        value={terms[key] ?? ""}
+                        value={String(terms[key] ?? "")}
                         onChange={(e) =>
                           setTerms({
                             ...terms,
                             [key]: e.target.value
-                              ? key === "subscription_due_day"
+                              ? key === "subscription_due_day" || key === "document_retention_days"
                                 ? Number(e.target.value)
                                 : key.endsWith("_currency")
                                   ? e.target.value.toUpperCase()

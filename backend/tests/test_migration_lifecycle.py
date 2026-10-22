@@ -44,9 +44,10 @@ def migration_database(request, tmp_path):
 def create_legacy_schema(database):
     from sqlalchemy import MetaData
 
+    from app.migrations import AUTH_TABLES
     original = MetaData()
     for table in Base.metadata.sorted_tables:
-        if table.name in {"auth_sessions", "user_permissions", "login_throttles", "registration_submissions", "application_events", "savings_interests", "application_submissions", "application_registration_payments", "membership_approvals", "password_setup_invitations", "plan_drafts", "plan_draft_versions", "business_settings_versions", "business_settings_publications", "application_settings_snapshots", "subscription_settings_snapshots", "fee_rate_versions", "fee_rate_publications", "fee_obligations", "subscription_fee_payments"}:
+        if table.name in AUTH_TABLES:
             continue
         table.to_metadata(original)
     for name in ("created_at", "updated_at"):
@@ -501,7 +502,9 @@ def test_settings_migration_preserves_baseline_and_serialises_changes(migration_
             assert c.execute(text('SELECT r.name FROM roles r JOIN role_permissions rp ON rp.role_id=r.id JOIN permissions p ON p.id=rp.permission_id WHERE p.code=:code'),{'code':code}).scalars().all()==['administrator']
     with Session(database) as db:
         version,baseline=active(db)
-        assert baseline==DEFAULTS and version>0
+        assert {k:baseline[k] for k in DEFAULTS}==DEFAULTS and version>0
+        assert all(baseline[k] is False for k in ['require_national_id','require_residence_evidence','require_income_evidence','require_evidence_acceptance'])
+        assert baseline['document_retention_days'] is None
         assert db.query(BusinessSettingsVersion).count()==db.query(BusinessSettingsPublication).count()==1
         actor=User(email='settings-race@example.test',is_active=True,role_id=db.query(Role).filter_by(name='administrator').one().id)
         db.add(actor);db.commit();actor_id=actor.id;headers(db,actor,'settings-race-session')

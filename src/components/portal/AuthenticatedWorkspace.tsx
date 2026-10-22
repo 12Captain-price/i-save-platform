@@ -9,13 +9,15 @@ import { OrganisationOverview, MembersDirectory } from "./AdminDataScreens";
 import { SubscriptionPayments } from "./SubscriptionPayments";
 import { OrganisationSettings } from "./OrganisationSettings";
 import { PlanDrafts } from "./PlanDrafts";
+import { MemberPlans } from './MemberPlans';
+import { PlanApplicationReview } from './PlanApplicationReview';
 import { MemberOverview } from "./MemberOverview";
 import { MemberFees } from "./MembershipReview";
 import { ApplicationScreens } from "./ApplicationScreens";
 import { AssistedRegistration } from "@/components/auth/AssistedRegistration";
 const supported: Record<Role, string[]> = {
-  member: ["dashboard", "fees"],
-  staff: ["dashboard", "registrations", "assist-registration"],
+  member: ["dashboard", "fees", "plans", "applications"],
+  staff: ["dashboard", "registrations", "assist-registration", "plan-applications"],
   finance: ["dashboard", "fees"],
   admin: [
     "dashboard",
@@ -23,11 +25,13 @@ const supported: Record<Role, string[]> = {
     "assist-registration",
     "members",
     "plans",
+    "plan-applications",
     "finance",
     "settings",
   ],
 };
 const descriptions: Record<string, string> = {
+  applications:'Your recorded plan applications and enrolments, separate from membership registration and category interests.',
   dashboard: "Your starting point for supported tasks and recorded information.",
   registrations:
     "Search pending applications, inspect payment evidence and review recorded history.",
@@ -35,7 +39,8 @@ const descriptions: Record<string, string> = {
   fees: "View fee obligations and recorded payments. Fees remain separate from savings.",
   finance: "Record and verify subscription payments with separate permissions.",
   settings: "Manage versioned drafts and publish changes to future records.",
-  plans: "Prepare unpublished proposals. No draft is available for enrolment.",
+  plans: "Review plans and exact terms. Drafts require explicit approval and publication before they are offered.",
+  'plan-applications':'Review accepted plan terms and activate enrolments with separate permissions.',
   "assist-registration":
     "Confirm details and obtain the applicant’s authorisation before submitting.",
 };
@@ -300,6 +305,10 @@ export function AuthenticatedWorkspace({ role, screen }: { role: Role; screen: s
             <SubscriptionPayments />
           ) : role === "admin" && screen === "settings" ? (
             <OrganisationSettings />
+          ) : (role==='admin'||role==='staff')&&screen==='plan-applications' ? (
+            <PlanApplicationReview/>
+          ) : role==='member'&&['plans','applications'].includes(screen) ? (
+            <MemberPlans applicationsOnly={screen==='applications'}/>
           ) : role === "admin" && screen === "plans" ? (
             <PlanDrafts />
           ) : role === "member" && screen === "dashboard" ? (

@@ -21,9 +21,10 @@ import app.models  # noqa: F401
 
 
 INITIAL_REVISION = "0001_initial_schema"
-ADOPTION_HEAD = "0010_fee_currency"
+ADOPTION_HEAD = "0011_documents_enrolment"
 AUTH_TABLES = {"auth_sessions", "user_permissions", "login_throttles", "registration_submissions", "application_events", "savings_interests", "application_submissions", "application_registration_payments", "membership_approvals", "password_setup_invitations", "plan_drafts", "plan_draft_versions", "business_settings_versions", "business_settings_publications", "application_settings_snapshots", "subscription_settings_snapshots", "fee_rate_versions", "fee_rate_publications", "fee_obligations", "subscription_fee_payments"}
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
+AUTH_TABLES |= {'registration_evidence_profiles', 'application_evidence', 'evidence_reviews', 'plan_approvals', 'plan_publications', 'plan_applications', 'plan_enrolments', 'plan_application_events'}
 
 
 def migration_config(connection=None) -> Config:

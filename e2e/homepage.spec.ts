@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { textContrast } from "../scripts/text-contrast.mjs";
 const origin = process.env.ISAVE_E2E_ORIGIN ?? "http://127.0.0.1:13000";
-const output = "docs/homepage-redesign/after";
+const output = process.env.ISAVE_E2E_EVIDENCE_DIR ?? "docs/homepage-redesign/after";
 mkdirSync(output, { recursive: true });
 for (const width of [360, 390, 768, 1440, 1920])
   test(`homepage ${width}px: content, layout, contrast and destinations`, async ({ page }) => {

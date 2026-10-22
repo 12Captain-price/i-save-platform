@@ -1,3 +1,4 @@
+import json
 """Read-only member-owned portal records; fees never become savings."""
 from sqlalchemy import select
 from decimal import Decimal
@@ -34,6 +35,12 @@ def overview(db, actor):
     status = 'No member record linked' if not member else (
         'Activated' if approval and approval.activated_at else
         'Approved — awaiting activation' if approval else 'Not confirmed')
+    from app.models.evidence_enrolment import PlanApplication, PlanEnrolment
+    from app.security.auth import permissions
+    enrolments=[]
+    if member and 'plans:own' in permissions(db,actor):
+        enrolments=[{'application_id':r.id,'category':json.loads(r.terms_snapshot)['terms']['category'],'currency':r.currency,'weekly_target':str(r.weekly_target),
+            'start_date':e.start_date,'end_date':e.end_date} for r,e in db.query(PlanApplication,PlanEnrolment).join(PlanEnrolment,PlanEnrolment.application_id==PlanApplication.id).filter(PlanApplication.member_id==member.id).all()]
     return {
         'member': None if not member else {'first_name':member.first_name,
             'last_name':member.last_name,'member_number':member.member_number},
@@ -44,7 +51,7 @@ def overview(db, actor):
         'fees':fees,
         'registration_fee_verified': any(r['verified_at'] and r['status']=='Paid' for r in fees['registration_fees']),
         'savings_interests':interests,
-        'plan_enrolment':{'available':False,'notice':'Formal savings-plan approval is not configured. An expression of interest is not an approved savings-plan enrolment.'},
+        'plan_enrolment':{'available':bool(enrolments),'items':enrolments,'notice':'An expression of interest is not an approved savings-plan enrolment. Plan applications require effective published terms, authorised review and separate activation.'},
         # The legacy helper mixes currencies and does not establish reconciled,
         # immutable ledger totals. Expose no balance, even if rows say Verified.
         'savings':{'available':False,'message':'Savings summary not available yet'},

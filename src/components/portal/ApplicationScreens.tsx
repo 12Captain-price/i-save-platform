@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { MembershipReview } from "./MembershipReview";
+import { ApplicationDocuments } from './ApplicationDocuments';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Feedback, useRecords } from "./AdminDataScreens";
@@ -87,10 +88,7 @@ function ApplicationDetails({ id, back }: { id: number; back: () => void }) {
               History
             </a>
           </nav>
-          <p className="text-xs text-muted-foreground">
-            Document upload and document review are not supported. Do not request identity documents
-            through this screen.
-          </p>
+          <ApplicationDocuments id={id} onChange={result.reload}/>
           <section
             id="application-details"
             aria-label="Submission source and authorisation"

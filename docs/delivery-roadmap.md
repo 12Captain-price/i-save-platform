@@ -45,6 +45,8 @@ stabilisation milestone. No production deployment or paid services are requested
 
 ## Ordered implementation backlog
 
+The combined [registration-documents and plan-enrolment milestone](registration-documents-enrolment.md) adds private evidence review, future-application requirement snapshots, explicit plan approval/publication, immutable member acceptance and separate eight-calendar-month enrolment activation. No plan is automatically published, no existing application is retrospectively verified, and no enrolment action posts money. See the consolidated report for validation, local migration activation, scanner/retention dependencies and isolated manual rehearsal.
+
 1. Complete and review the database runbook; apply it to the existing office
    development database after a verified backup. Cloud validation does not
    establish the state of the user's laptop or another deployment.

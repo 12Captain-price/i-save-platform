@@ -10,6 +10,7 @@ from app.models.plan_draft import PlanDraft,PlanDraftVersion
 from app.models.user import User
 from app.models.audit_event import AuditEvent
 from app.schemas.plan_draft import DraftSave,DraftTerms
+from app.schemas.enrolment import PlanAction
 from app.security.auth import current_user,current_session,permissions
 from app.services.membership import lock_actor,advisory
 
@@ -24,24 +25,40 @@ def access(code):
     return check
 
 
-def present(row):
+def present(row, db=None):
+    from app.models.evidence_enrolment import PlanApproval, PlanPublication
+    state = "Published / scheduled" if db is not None and db.get(PlanPublication,row.id) else "Approved ? unpublished" if db is not None and db.get(PlanApproval,row.id) else "Unpublished draft"
     terms=DraftTerms.model_validate_json(row.snapshot)
     return {'draft_id':row.draft_id,'version':row.version,'terms':terms.model_dump(mode='json'),
-        'missing_decisions':terms.missing(),'status':'Unpublished draft','actor_email':row.actor_email,
+        'missing_decisions':terms.missing(),'status':state,'actor_email':row.actor_email,
         'recorded_at':row.recorded_at}
+
+
+@router.post('/{draft_id}/{action}')
+def publication(draft_id:int,action:str,body:PlanAction,
+    actor=Depends(current_user),session=Depends(current_session),db:Session=Depends(get_db)):
+    if action not in {'approve','publish'}:raise APIError(404,'not_found','Action not found')
+    code='plans:'+action
+    if not actor.role or actor.role.name!='administrator' or code not in permissions(db,actor):raise APIError(403,'forbidden','Plan publication permission required')
+    lock_actor(db,actor,session,code)
+    from app.services.enrolment import publish_action
+    result=publish_action(db,actor,draft_id,action,body)
+    db.commit();return result
 
 
 @router.get('')
 def listing(skip:int=Query(0,ge=0),limit:int=Query(10,ge=1,le=100),actor=Depends(access('plans:drafts:read')),db:Session=Depends(get_db)):
     query=db.query(PlanDraftVersion).join(PlanDraft,PlanDraft.id==PlanDraftVersion.draft_id).filter(PlanDraftVersion.version==PlanDraft.latest_version)
-    return {'items':[present(v) for v in query.order_by(PlanDraft.id.desc()).offset(skip).limit(limit)],'total':query.count()}
+    return {'items':[present(v,db) for v in query.order_by(PlanDraft.id.desc()).offset(skip).limit(limit)],'total':query.count()}
 
 
 @router.get('/{draft_id}')
 def detail(draft_id:int,actor=Depends(access('plans:drafts:read')),db:Session=Depends(get_db)):
     rows=db.query(PlanDraftVersion).filter_by(draft_id=draft_id).order_by(PlanDraftVersion.version.desc()).all()
     if not rows:raise APIError(404,'not_found','Draft not found')
-    return {'latest':present(rows[0]),'history':[present(r) for r in rows]}
+    from app.services.enrolment import preview
+    return {'latest':present(rows[0],db),'history':[present(r,db) for r in rows], 'publication_preview':preview(db,rows[0]),
+        'publication_history':[{'version':r.version,**preview(db,r)} for r in rows]}
 
 
 def save(db,actor,session,body,draft_id=None):
@@ -54,7 +71,7 @@ def save(db,actor,session,body,draft_id=None):
     if old:
         if old.snapshot!=snapshot or (draft_id is not None and old.draft_id!=draft_id) or old.version!=body.base_version+1:
             raise APIError(409,'conflict','Request key already used for a different change')
-        return present(old)
+        return present(old,db)
     if draft_id is None:
         if body.base_version!=0:raise APIError(409,'conflict','New draft starts at version zero')
         draft=PlanDraft(latest_version=0);db.add(draft);db.flush()
@@ -70,7 +87,7 @@ def save(db,actor,session,body,draft_id=None):
     try:db.commit()
     except IntegrityError:
         db.rollback();raise APIError(409,'conflict','Conflicting draft change; reload before retrying')
-    db.refresh(row);return present(row)
+    db.refresh(row);return present(row,db)
 
 
 @router.post('',status_code=201)

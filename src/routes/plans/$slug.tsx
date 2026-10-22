@@ -3,6 +3,7 @@ import { PublicLayout } from "@/components/site/PublicLayout";
 import { PageIntro } from "@/components/site/SiteSections";
 import { savingsInterest } from "@/lib/savings-interest";
 import { Button } from "@/components/ui/button";
+import { PlanOffers } from '@/components/portal/MemberPlans';
 export const Route = createFileRoute("/plans/$slug")({ component: Details });
 function Details() {
   const { slug } = Route.useParams();
@@ -43,6 +44,7 @@ function Details() {
             </Button>
           </div>
         </section>
+        <div className="mt-8"><PlanOffers category={category.id}/></div>
       </div>
     </PublicLayout>
   );

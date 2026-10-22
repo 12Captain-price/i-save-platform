@@ -12,7 +12,8 @@ def active(db, at=None):
     row = db.execute(select(Version).join(Publication, Publication.version_id==Version.id).where(
         Publication.effective_at <= (at or now())).order_by(Publication.effective_at.desc(), Publication.id.desc())).scalars().first()
     # Unit-test create_all and legacy snapshots use the exact frozen baseline.
-    return (row.id, json.loads(row.snapshot)) if row else (0, dict(DEFAULTS))
+    from app.schemas.business_settings import BusinessTerms
+    return (row.id, BusinessTerms.model_validate_json(row.snapshot).model_dump(mode='json')) if row else (0, BusinessTerms.model_validate(DEFAULTS).model_dump(mode='json'))
 
 
 def application_policy(db, application_id):

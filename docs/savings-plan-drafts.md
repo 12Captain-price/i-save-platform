@@ -135,3 +135,6 @@ scope and owner decisions. Browser automation does not replace human
 screen-reader usability review. Backend tests have one existing Starlette/httpx
 deprecation warning; builds have existing tooling/chunk warnings, no failures.
 No production deployment, push or merge was performed.
+# Current extension: explicit plan publication and enrolment
+
+See [registration documents and plan enrolment](registration-documents-enrolment.md) for separate terms approval/publication, effective offers, member acceptance and eight-calendar-month enrolments. Existing drafts remain unpublished until explicitly approved and published; their original history is retained. The earlier draft-only implementation and validation below remain historical evidence.

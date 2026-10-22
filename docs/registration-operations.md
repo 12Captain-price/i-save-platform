@@ -1,5 +1,7 @@
 # Pending public registration — 19 October 2026
 
+Current extension: [private registration documents and plan enrolment](registration-documents-enrolment.md) adds consented private evidence, configurable future-application requirements and dedicated protected review. The original milestone evidence below remains historical; it is not rewritten as document verification.
+
 The subsequent [fee-gated membership workflow](membership-activation.md) implements
 the agreed recording, verification, approval and activation actions. Earlier
 read-only/disabled-policy statements below describe the original milestone.

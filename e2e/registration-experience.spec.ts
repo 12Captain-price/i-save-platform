@@ -31,7 +31,7 @@ test("mobile keyboard submission, lost response, safe retry and identical duplic
     await page.getByRole("radio", { name: "Asset", exact: true }).focus();
     await page.keyboard.press("ArrowRight");
     await expect(page.getByRole("radio", { name: "Holiday", exact: true })).toBeChecked();
-    await expect(page.getByRole("checkbox")).toHaveCount(0);
+    await expect(page.getByRole("checkbox", {name:/I authorise i-Save/})).not.toBeChecked();
     await page.getByLabel("First name (required)").focus();
     await page.keyboard.type("Experience");
     await page.keyboard.press("Tab");

@@ -8,6 +8,7 @@ import { RegistrationHelp } from "@/components/site/RegistrationHelp";
 import { SavingsCategoryChoice } from "./SavingsCategoryChoice";
 import { savingsInterest } from "@/lib/savings-interest";
 import authorization from "../../../backend/app/assisted_authorization.json";
+import { RegistrationEvidence, evidencePayload } from './RegistrationEvidence';
 
 export function Registration() {
   return (
@@ -160,7 +161,7 @@ export function RegistrationForm({
                 event.preventDefault();
                 if (sending.current) return;
                 const form = event.currentTarget;
-                const values = Object.fromEntries(new FormData(form).entries());
+                const values = Object.fromEntries([...new FormData(form).entries()].filter(([key])=>!key.startsWith('document_')));
                 const payload = assisted
                   ? {
                       ...values,
@@ -172,6 +173,7 @@ export function RegistrationForm({
                 setBusy(true);
                 setError("");
                 try {
+                  Object.assign(payload,await evidencePayload(form));
                   const response = await fetch(
                     assisted ? "/api/registration/assisted" : "/api/registration",
                     {
@@ -180,7 +182,7 @@ export function RegistrationForm({
                       cache: "no-store",
                       headers: { "Content-Type": "application/json", "X-Isave-Request": "1" },
                       body: JSON.stringify(payload),
-                      signal: AbortSignal.timeout(15_000),
+                      signal: AbortSignal.timeout(45_000),
                     },
                   );
                   if (response.status !== 202) {
@@ -219,6 +221,7 @@ export function RegistrationForm({
                 onChange={setPreferredCategory}
                 disabled={busy}
               />
+              <RegistrationEvidence disabled={busy}/>
               <div className="grid gap-5 sm:grid-cols-2">
                 {[
                   ["first_name", "First name", "given-name"],

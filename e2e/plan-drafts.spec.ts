@@ -122,10 +122,10 @@ test("Admin incomplete draft, retry, revisions and PostgreSQL isolation on mobil
   await expect(page.getByRole("heading", { name: "Version history" })).toBeVisible();
   await expect(
     page.getByText(
-      "Configuration fields recorded. Policy approval and publication remain unavailable.",
+      "Configuration fields recorded. Separate explicit terms approval and publication are required.",
     ),
   ).toBeVisible();
-  await expect(page.locator("main summary")).toHaveCount(2);
+  await expect(page.getByRole("heading", { name: "Version history" }).locator("..").locator("summary")).toHaveCount(2);
   await page.setViewportSize({ width: 1440, height: 1000 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   const forbidden = await page.request.put(`/api/admin/plan-drafts/${draftId}`, {
@@ -135,7 +135,7 @@ test("Admin incomplete draft, retry, revisions and PostgreSQL isolation on mobil
   expect(forbidden.status()).toBe(403);
   expect(
     (await page.request.post(`/api/admin/plan-drafts/${draftId}/publish`, { data: {} })).status(),
-  ).toBe(404);
+  ).toBe(403);
   expect(
     python(
       `from sqlalchemy.orm import Session; from app.models.plan_draft import PlanDraftVersion; db=Session(engine); assert db.query(PlanDraftVersion).filter_by(draft_id=${draftId}).count()==2; print('PASS')`,

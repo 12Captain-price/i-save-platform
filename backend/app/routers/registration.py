@@ -22,6 +22,9 @@ ACKNOWLEDGEMENT = {"message": "Your request has been received. Eligible new subm
 
 @router.post("", status_code=202)
 def register(body: PublicRegistration, request: Request, db: Session = Depends(get_db)):
+    from app.config import get_settings
+    if get_settings().app_env=='production' and request.url.scheme!='https' and (body.national_id or body.income_source or body.evidence):
+        raise APIError(400,'https_required','HTTPS is required for private application information')
     # Count duplicates too. Do not trust caller-supplied forwarded IP headers.
     throttle(db, digest("registration-ip:" + (request.client.host if request.client else "unknown")))
     return submit_pending(body, db)
@@ -43,6 +46,8 @@ def assisted_register(body: AssistedRegistration, actor: User = Depends(require(
 
 
 def submit_pending(body: PublicRegistration, db: Session, actor=None):
+    from app.services import evidence
+    prepared = evidence.prepare(db, body)
     email = body.email.lower()
     insert = pg_insert if db.bind.dialect.name == "postgresql" else sqlite_insert
     reserved = db.execute(insert(RegistrationSubmission).values(email_hash=digest(email))
@@ -52,10 +57,11 @@ def submit_pending(body: PublicRegistration, db: Session, actor=None):
         account_exists = db.scalar(select(User.id).where(func.lower(User.email) == email).limit(1))
         application_exists = db.scalar(select(MembershipApplication.id).where(func.lower(MembershipApplication.email) == email).limit(1))
         if not account_exists and not application_exists:
-            application = MembershipApplication(**{**body.model_dump(exclude={'preferred_category','interest_notice_version','applicant_authorized','authorization_version'}), "email":email},
+            application = MembershipApplication(**{**body.model_dump(exclude={'preferred_category','interest_notice_version','applicant_authorized','authorization_version','national_id','income_source','evidence','evidence_consent','evidence_consent_version'}), "email":email},
                 application_number="APP-" + secrets.token_hex(16), status="Pending")
             db.add(application)
             db.flush()
+            evidence.persist(db, application, body, prepared, actor)
             db.get(RegistrationSubmission, digest(email)).application_id = application.id
             db.add(ApplicationSubmission(application_id=application.id, source='staff_assisted' if actor else 'public',
                 actor_user_id=actor.id if actor else None, actor_email=actor.email if actor else None,
