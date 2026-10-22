@@ -128,7 +128,7 @@ def test_owned_acceptance_review_activation_retries_no_financial_effect(client,d
     assert client.get(url,headers=own).json()['items'][0]['enrolment']['end_date']=='2027-03-01'
     overview=client.get('/api/v1/membership/overview',headers=own).json()
     assert overview['plan_enrolment']['items'][0]['application_id']==identifier
-    assert overview['savings']['available'] is False
+    assert overview['savings']['available'] is True
 
 
 @pytest.mark.parametrize('capability,action',[('plans:approve','approve'),('plans:publish','publish'),('plan-applications:review','review'),('enrolments:activate','activate')])

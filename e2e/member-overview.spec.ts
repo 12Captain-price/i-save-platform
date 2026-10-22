@@ -86,7 +86,7 @@ test("populated overview, Fees consistency, separate interest and savings, deskt
   ).toBeVisible();
   await expect(page.getByText("Education", { exact: true })).toBeVisible();
   await expect(page.getByText(/Subscriptions begin November 2026/)).toBeVisible();
-  await expect(page.getByText("Savings summary not available yet")).toBeVisible();
+  await expect(page.getByText("No confirmed ledger credits recorded.")).toBeVisible();
   const body = await page.locator("main").innerText();
   expect(body).not.toMatch(/123\.45|999|Overdue|Savings balance|Legacy recorded link/);
   expect(body).toContain("not an approved savings-plan enrolment");

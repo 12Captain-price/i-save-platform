@@ -204,14 +204,13 @@ def test_actor_is_derived_from_session_and_status_forgery_is_refused(client, db,
     auth = headers(db, admin)
     body = {"contribution_reference":"RECORDED", "member_id":accounts["member"].member.id, "amount":"7.50"}
     response = client.post(f'/api/v1/contributions?recorded_by={accounts["other"].id}', json=body, headers=auth)
-    assert response.status_code == 201
-    assert response.json()["recorded_by"] == admin.id
+    assert response.status_code == 503  # Legacy generic recording cannot bypass the enrolment workflow.
     body["contribution_reference"] = "FORGED"
     body["status"] = "Verified"
-    assert client.post("/api/v1/contributions", json=body, headers=auth).status_code == 400
+    assert client.post("/api/v1/contributions", json=body, headers=auth).status_code == 503
     body.pop("status")
     body["verified_by"] = admin.id
-    assert client.post("/api/v1/contributions", json=body, headers=auth).status_code == 400
+    assert client.post("/api/v1/contributions", json=body, headers=auth).status_code == 503
 
 
 def test_unconfigured_approval_workflows_stay_disabled_even_for_admin(client, db, accounts):
@@ -334,8 +333,7 @@ def test_role_grants_and_individual_allows_are_effective_and_audited(client, db,
     staff_auth = headers(db,accounts["staff"],"allowed-recorder")
     response = client.post("/api/v1/contributions",headers=staff_auth,json={"contribution_reference":"ALLOWED",
                            "member_id":accounts["member"].member.id,"amount":"5.00"})
-    assert response.status_code == 201
-    assert response.json()["recorded_by"] == accounts["staff"].id
+    assert response.status_code == 503  # Generic contributions:write does not grant dedicated savings recording.
 
 
 def test_password_changes_are_throttled(client, db, accounts):

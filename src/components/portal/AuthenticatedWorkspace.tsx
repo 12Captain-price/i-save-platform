@@ -11,15 +11,17 @@ import { OrganisationSettings } from "./OrganisationSettings";
 import { PlanDrafts } from "./PlanDrafts";
 import { MemberPlans } from './MemberPlans';
 import { PlanApplicationReview } from './PlanApplicationReview';
+import { SavingsWorkspace } from "./SavingsWorkspace";
 import { MemberOverview } from "./MemberOverview";
 import { MemberFees } from "./MembershipReview";
 import { ApplicationScreens } from "./ApplicationScreens";
 import { AssistedRegistration } from "@/components/auth/AssistedRegistration";
 const supported: Record<Role, string[]> = {
-  member: ["dashboard", "fees", "plans", "applications"],
-  staff: ["dashboard", "registrations", "assist-registration", "plan-applications"],
-  finance: ["dashboard", "fees"],
+  member: ["contributions", "dashboard", "fees", "plans", "applications"],
+  staff: ["contributions", "dashboard", "registrations", "assist-registration", "plan-applications"],
+  finance: ["contributions", "verification", "reconciliation", "ledger", "dashboard", "fees"],
   admin: [
+    "contributions",
     "dashboard",
     "registrations",
     "assist-registration",
@@ -32,6 +34,10 @@ const supported: Record<Role, string[]> = {
 };
 const descriptions: Record<string, string> = {
   applications:'Your recorded plan applications and enrolments, separate from membership registration and category interests.',
+  contributions: "Record, verify and reconcile office contributions. Confirmed savings comes only from the ledger.",
+  verification: "Review recorded office contributions. Verification alone does not increase confirmed savings.",
+  reconciliation: "Match verified payments against evidence and resolve discrepancies before posting savings.",
+  ledger: "Inspect confirmed contributions and linked reversals. USD and ZiG remain separate.",
   dashboard: "Your starting point for supported tasks and recorded information.",
   registrations:
     "Search pending applications, inspect payment evidence and review recorded history.",
@@ -294,11 +300,11 @@ export function AuthenticatedWorkspace({ role, screen }: { role: Role; screen: s
               {screenTitle(role, screen)}
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-              {descriptions[screen] ??
+              {role === "member" && screen === "contributions" ? "View your contribution history, confirmed savings and receipts. Pending contributions are shown separately." : descriptions[screen] ??
                 "This service is awaiting implementation. No simulated transactions are shown."}
             </p>
           </div>
-          {(role === "staff" || role === "finance") && screen === "dashboard" ? (
+          {screen === "contributions" || (role === "finance" && ["verification","reconciliation","ledger"].includes(screen)) ? <SavingsWorkspace key={screen} member={role === "member"} initialStatus={screen === "verification" ? "Pending verification" : screen === "reconciliation" ? "Verified" : screen === "ledger" ? "Confirmed" : ""}/> : (role === "staff" || role === "finance") && screen === "dashboard" ? (
             <TaskHome role={role} />
           ) : (role === "admin" && screen === "finance") ||
             (role === "finance" && screen === "fees") ? (

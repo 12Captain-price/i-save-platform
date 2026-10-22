@@ -54,7 +54,7 @@ def overview(db, actor):
         'plan_enrolment':{'available':bool(enrolments),'items':enrolments,'notice':'An expression of interest is not an approved savings-plan enrolment. Plan applications require effective published terms, authorised review and separate activation.'},
         # The legacy helper mixes currencies and does not establish reconciled,
         # immutable ledger totals. Expose no balance, even if rows say Verified.
-        'savings':{'available':False,'message':'Savings summary not available yet'},
+        'savings':savings_summary(db, member.id) if member and 'savings:own' in permissions(db,actor) else {'available':False,'message':'Savings summary not available yet'},
         'subscription_due_day':next((s['due_date'].day for s in reversed(fees['subscriptions']) if s['due_date']),None),
     }
 
@@ -78,3 +78,5 @@ def fee_records(db, member):
             'obligation':quote(db,db.query(FeeObligation).filter_by(subscription_id=s.id).one_or_none()),
             'payment':None if not payment else {'amount':str(payment.amount),'currency':payment.currency,'reference':payment.reference,'payment_date':payment.payment_date,'verified_at':payment.verified_at}})
     return {'registration_fees':result,'subscriptions':subscriptions}
+
+from app.services.savings import summary as savings_summary

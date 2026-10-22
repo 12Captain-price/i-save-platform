@@ -287,7 +287,8 @@ async function organisationSettings(request: Request, url: URL) {
       subscription_due_day:
         "Due day: use 1–28 or leave blank; days 29–31 need an approved short-month rule.",
       review_acknowledgement: "Reviewer wording: use at most 2000 characters.",
-      document_retention_days: 'Retention policy: enter positive whole days or leave unset. Recording a period does not enable automatic deletion.',
+      document_retention_days:
+        "Retention policy: enter positive whole days or leave unset. Recording a period does not enable automatic deletion.",
       effective_at: "Effective date: enter a valid date and time including a timezone.",
       rate: "Rate: enter a positive ZiG-per-USD value with at most eight decimal places.",
       source: "Rate source: describe the source in at most 500 characters.",
@@ -416,11 +417,16 @@ async function evidenceAndPlans(request: Request, url: URL): Promise<Response | 
   const review = /^\/api\/review\/plan-applications(?:\/[1-9][0-9]{0,9}\/(review|activate))?$/.test(
     path,
   );
+  const savings =
+    /^\/api\/savings(?:\/(?:enrolments|legacy|[1-9][0-9]{0,9}(?:\/(?:receipt|verify|reconcile|extra|reverse))?))?$/.test(
+      path,
+    );
   const publication = /^\/api\/admin\/plan-drafts\/[1-9][0-9]{0,9}\/(approve|publish)$/.test(path);
-  if (!publicRead && !documents && !member && !review && !publication) return null;
+  if (!publicRead && !documents && !member && !review && !publication && !savings) return null;
   const writing = request.method === "POST";
   const postAllowed =
     publication ||
+    (savings && (path === "/api/savings" || /\/(verify|reconcile|extra|reverse)$/.test(path))) ||
     /\/(replace|review|activate)$/.test(path) ||
     path === "/api/member/plan-applications";
   if (
@@ -436,8 +442,9 @@ async function evidenceAndPlans(request: Request, url: URL): Promise<Response | 
     "/api/v1/" + path.slice("/api/".length),
     process.env["AUTH_API_ORIGIN"] ?? "http://127.0.0.1:8000",
   );
-  const allowed =
-    path === "/api/public/plan-offers"
+  const allowed = savings
+    ? ["q", "status", "skip", "limit"]
+    : path === "/api/public/plan-offers"
       ? ["category"]
       : path === "/api/review/plan-applications"
         ? ["q", "skip", "limit"]
@@ -515,6 +522,7 @@ export async function handleAuthentication(request: Request): Promise<Response |
   const url = new URL(request.url);
   const path = url.pathname;
   if (
+    !path.startsWith("/api/savings") &&
     !path.startsWith("/api/public/") &&
     !path.startsWith("/api/application-documents/") &&
     !path.startsWith("/api/member/") &&
@@ -530,7 +538,13 @@ export async function handleAuthentication(request: Request): Promise<Response |
   try {
     const extended = await evidenceAndPlans(request, url);
     if (extended) return extended;
-    if ((path.startsWith('/api/public/') && path !== '/api/public/contacts') || path.startsWith('/api/application-documents/') || path.startsWith('/api/member/')) return message('Not found.',404);
+    if (
+      path.startsWith("/api/savings") ||
+      (path.startsWith("/api/public/") && path !== "/api/public/contacts") ||
+      path.startsWith("/api/application-documents/") ||
+      path.startsWith("/api/member/")
+    )
+      return message("Not found.", 404);
     if (path === "/api/public/contacts") {
       if (request.method !== "GET" || url.search) return message("Not found.", 404);
       const response = await fetch(

@@ -176,7 +176,7 @@ def test_registration_zig_frozen_rate_actual_payment_and_savings_untouched(clien
     assert fees['registration_fees'][0]['payment_amount']=='680.00' and fees['registration_fees'][0]['payment_currency']=='ZWG'
     assert 'published_by' not in fees['registration_fees'][0]['obligation']['rate']
     overview=client.get('/api/v1/membership/overview',headers=own).json()
-    assert overview['registration_fee_verified'] is True and overview['fees']==fees and overview['savings']['available'] is False
+    assert overview['registration_fee_verified'] is True and overview['fees']==fees and overview['savings']['available'] is True
     assert db.query(Contribution).filter_by(member_id=approval.member_id).count()==0
 
 
@@ -231,6 +231,6 @@ def test_savings_usd_and_zig_are_never_combined_or_relabelled(client,db,accounts
     db.commit()
     auth=headers(db,accounts['member'])
     response=client.get(f'/api/v1/contributions/{member.id}/confirmed-total',headers=auth)
-    assert response.status_code==409 and response.json()['error']['code']=='currency_totals_unavailable'
-    assert client.get('/api/v1/membership/overview',headers=auth).json()['savings']['available'] is False
+    assert response.status_code==200 and response.json()['confirmed']==[] and response.json()['legacy_requires_review']>=2
+    assert client.get('/api/v1/membership/overview',headers=auth).json()['savings']['available'] is True
     assert {(r.currency,str(r.amount)) for r in db.query(Contribution).filter_by(member_id=member.id,status='Verified')}=={('USD','10.00'),('ZWG','340.00')}

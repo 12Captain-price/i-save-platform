@@ -62,7 +62,7 @@ for (const role of ["member", "staff", "finance", "admin"]) {
       role === "admin"
         ? page.getByTestId("count-Member records")
         : role === "member"
-          ? page.getByText("Savings summary not available yet")
+          ? page.getByText("No confirmed ledger credits recorded.")
           : page.getByRole("heading", {
               name: role === "staff" ? "Review applications" : "Subscription fees",
             }),
@@ -115,7 +115,7 @@ for (const role of ["member", "staff", "finance", "admin"]) {
       role === "admin"
         ? page.getByTestId("count-Member records")
         : role === "member"
-          ? page.getByText("Savings summary not available yet")
+          ? page.getByText("No confirmed ledger credits recorded.")
           : page.getByRole("heading", {
               name: role === "staff" ? "Review applications" : "Subscription fees",
             }),

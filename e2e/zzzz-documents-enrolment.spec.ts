@@ -290,7 +290,7 @@ test("complete plan terms require explicit approval/publication; owned applicati
   await login(page, memberEmail);
   await page.goto("/portal/member/dashboard");
   await expect(page.getByText(/Programme completion/)).toBeVisible();
-  await expect(page.getByText("Savings summary not available yet", { exact: true })).toBeVisible();
+  await expect(page.getByText("No confirmed ledger credits recorded.", { exact: true })).toBeVisible();
   await page.goto("/portal/member/plans");
   await expect(
     page.getByText(`Plan application ${request.id} · Active`, { exact: true }),

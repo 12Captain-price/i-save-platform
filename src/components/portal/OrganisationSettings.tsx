@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Feedback, useRecords } from "./AdminDataScreens";
 
 export const settingLabels = {
+  savings_week_start: "Savings weekly allocation convention (optional)",
+  savings_separation: "Savings separation of duties (approval pending when unset)",
   office: "Office address",
   email: "Public email",
   office_phone: "Office landline",
@@ -57,6 +59,12 @@ type State = {
   };
 };
 const groups: { title: string; description: string; keys: Key[] }[] = [
+  {
+    title: "Savings contribution controls",
+    description:
+      "New contributions snapshot the effective rule. Unset uses three distinct actors. Registration-fee same-person approval does not apply to savings. Existing records keep their captured controls.",
+    keys: ["savings_separation", "savings_week_start"],
+  },
   {
     title: "Public contacts",
     description: "Published contacts appear on public help and follow-up pages.",
@@ -299,7 +307,38 @@ function SettingsEditor({
                     <label htmlFor={"settings-" + key} className="text-sm font-medium">
                       {settingLabels[key]}
                     </label>
-                    {key.startsWith("require_") ? (
+                    {key === "savings_week_start" ? (
+                      <select
+                        id={"settings-" + key}
+                        className={fieldClass}
+                        value={String(terms[key] ?? "")}
+                        onChange={(e) => setTerms({ ...terms, [key]: e.target.value || null })}
+                      >
+                        <option value="">Not approved - explicit allocation review required</option>
+                        <option value="enrolment_start">
+                          Seven-day periods from enrolment start
+                        </option>
+                        <option value="monday">Monday-to-Sunday calendar weeks</option>
+                      </select>
+                    ) : key === "savings_separation" ? (
+                      <select
+                        id={"settings-" + key}
+                        className={fieldClass}
+                        value={String(terms[key] ?? "")}
+                        onChange={(e) => setTerms({ ...terms, [key]: e.target.value || null })}
+                      >
+                        <option value="">Not approved - three distinct actors required</option>
+                        <option value="distinct_all">
+                          Recorder, verifier and reconciler all distinct
+                        </option>
+                        <option value="recorder_separate">
+                          Verifier/reconciler may coincide; recorder separate
+                        </option>
+                        <option value="same_actor_allowed">
+                          Same actor allowed with each permission (explicit approval required)
+                        </option>
+                      </select>
+                    ) : key.startsWith("require_") ? (
                       <select
                         id={"settings-" + key}
                         className={fieldClass}

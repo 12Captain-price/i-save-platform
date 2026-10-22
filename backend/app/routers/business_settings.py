@@ -16,6 +16,7 @@ from app.services.business_settings import active, public_contacts
 router = APIRouter(tags=['organisation settings'])
 PREFIX = '/api/v1/admin/organisation-settings'
 IMPACTS = {
+    'savings': 'New contributions snapshot the effective separation rule. Unset requires three distinct actors. Publishing never changes accepted plan terms, historical controls, ledger entries or fee obligations.',
     'contacts': 'Public Contact, footer, registration help and application follow-up use the effective published contacts on their next load. Publishing does not send email.',
     'registration': 'Future first payment recordings snapshot the fee amount/currency and reviewer wording. Existing recorded payments and their approval requirements do not change.',
     'subscriptions': 'Future activations create their first subscription obligation using the effective amount, currency and optional due day. Existing obligations and activation start months do not change. Recurring obligation generation is not enabled.',

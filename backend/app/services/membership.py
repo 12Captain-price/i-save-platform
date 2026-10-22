@@ -32,7 +32,7 @@ def advisory(db,value):
 
 
 def reference_lock(db,reference):
-    advisory(db,'registration-receipt:'+reference.strip().lower())
+    advisory(db,'office-receipt:'+fee_currency.normalized_reference(reference))
 
 
 def lock_application(db,application_id):

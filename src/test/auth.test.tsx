@@ -15,6 +15,13 @@ function Controls() {
   return <><p>{auth.identity?.workspace ?? auth.status}</p><p>{auth.notice}</p><button onClick={() => void auth.logout()}>Sign out</button><button onClick={() => void auth.refresh()}>Refresh</button></>;
 }
 describe('Authenticated frontend', () => {
+  it('describes member contributions without staff instructions', async () => {
+    vi.stubGlobal('fetch',vi.fn().mockImplementation(async (path:string)=>Response.json(path==='/api/auth/me'?{...member,permissions:['members:own','savings:own']}:{items:[],total:0,summary:{available:true,confirmed:[],pending:[],legacy_requires_review:0,message:'Fees excluded'}})));
+    render(<AuthProvider><AuthenticatedWorkspace role="member" screen="contributions" /></AuthProvider>);
+    await screen.findByText('View your contribution history, confirmed savings and receipts. Pending contributions are shown separately.');
+    expect(screen.queryByText(/Record, verify and reconcile office contributions/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Your contributions remain pending/)).toBeInTheDocument();
+  });
   it('never opens anonymous workspaces or renders fixture balances', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 401 })));
     render(<AuthProvider><AuthenticatedWorkspace role="member" screen="dashboard" /></AuthProvider>);

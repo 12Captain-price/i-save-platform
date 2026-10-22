@@ -26,6 +26,9 @@ class BusinessTerms(BaseModel):
     require_evidence_acceptance: bool = Field(default=False, strict=True)
     document_retention_days: int | None = Field(default=None, ge=1, le=36500, strict=True)
 
+    savings_separation: Literal['distinct_all','recorder_separate','same_actor_allowed'] | None = None
+    savings_week_start: Literal['monday','enrolment_start'] | None = None
+
     @model_validator(mode='after')
     def amounts(self):
         for key in ['registration_amount','subscription_amount']:
@@ -33,7 +36,7 @@ class BusinessTerms(BaseModel):
         return self
 
     def missing(self):
-        optional = {'subscription_due_day', 'document_retention_days', 'require_national_id', 'require_residence_evidence', 'require_income_evidence', 'require_evidence_acceptance'}
+        optional = {'savings_separation', 'savings_week_start', 'subscription_due_day', 'document_retention_days', 'require_national_id', 'require_residence_evidence', 'require_income_evidence', 'require_evidence_acceptance'}
         return [k for k,v in self.model_dump().items() if k not in optional and not v]
 
 

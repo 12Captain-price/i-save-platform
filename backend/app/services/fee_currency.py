@@ -67,8 +67,18 @@ def audit(db,actor,action,identifier,details):
     db.add(AuditEvent(event_type='fee_currency',actor_user_id=actor.id,actor_email=actor.email,action=action,target_table='fee_obligations',target_id=str(identifier),details=json.dumps(details)))
 
 
+def normalized_reference(reference):
+    return ' '.join(reference.split()).casefold()
+
+
 def check_reference(db,reference):
     key=digest(reference.lower())
+    from app.models.savings import SavingsContribution
+    from app.models.contribution import Contribution
+    normalized=normalized_reference(reference)
+    for column in [SavingsContribution.reference,Contribution.contribution_reference,ApplicationRegistrationPayment.reference,SubscriptionFeePayment.reference,RegistrationFee.fee_reference]:
+        if any(normalized_reference(value)==normalized for (value,) in db.query(column)):
+            raise APIError(409,'duplicate_reference','Receipt/reference is already recorded')
     if db.query(ApplicationRegistrationPayment).filter_by(reference_key=key).first() or db.query(SubscriptionFeePayment).filter_by(reference_key=key).first() or db.query(RegistrationFee).filter(func.lower(RegistrationFee.fee_reference)==reference.lower()).first():
         raise APIError(409,'duplicate_reference','Receipt/reference is already recorded')
     return key

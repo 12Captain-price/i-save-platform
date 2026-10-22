@@ -71,7 +71,7 @@ def test_activated_snapshot_fee_subscription_and_unreliable_savings(client,db,ac
     assert data['savings_interests'][0]['notice_version']=='historical-v1'
     assert data['savings_interests'][0]['notice_text']=='Historical notice, no approved plan terms.'
     assert data['plan_enrolment']['available'] is False
-    assert data['savings']=={'available':False,'message':'Savings summary not available yet'}
+    assert data['savings']['available'] is True and data['savings']['confirmed']==[]
     assert all(number not in str(data) for number in ['123.45','987.65','1000.00'])
 
 def test_no_unapproved_overdue_interpretation_on_either_screen(client,db,accounts):

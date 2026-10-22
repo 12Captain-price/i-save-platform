@@ -1,0 +1,9 @@
+# Isolated synthetic savings validation only; never combine with normal compose.yaml.
+services:
+  backend:
+    environment:
+      APP_ENV: test
+      DOCUMENT_SCAN_TEST_ONLY: "true"
+    ports: !override ["127.0.0.1:18030:8000"]
+  frontend:
+    ports: !override ["127.0.0.1:13030:3000"]

@@ -326,17 +326,17 @@ function OwnedPlanSummary() {
       {r.error ? (
         <Feedback {...r} />
       ) : !r.data ? (
-        <p role="status">Loading enrolment summary?</p>
+        <p role="status">Loading enrolment summary...</p>
       ) : r.data.items.length === 0 ? (
         <p className="text-sm">No formal plan applications or enrolments recorded.</p>
       ) : (
         <ul className="space-y-3 text-sm">
           {r.data.items.map((p) => (
             <li key={p.id} className="rounded-lg border border-border p-3">
-              {p.terms.category} ? {p.status} ? Weekly target {p.weekly_target} {p.currency}
+              {p.terms.category} · {p.status} · Weekly target {p.weekly_target} {p.currency}
               {p.enrolment && (
                 <p className="mt-2">
-                  Start {p.enrolment.start_date} ? Programme completion {p.enrolment.end_date}
+                  Start {p.enrolment.start_date} · Programme completion {p.enrolment.end_date}
                 </p>
               )}
             </li>

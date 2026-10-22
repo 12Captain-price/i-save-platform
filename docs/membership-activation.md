@@ -1,5 +1,7 @@
 # Registration fee and membership workflow
 
+The subsequent [savings contributions and reconciliation milestone](savings-contributions.md) introduces ledger-backed, currency-separated confirmed savings. Legacy Verified contribution rows do not count as reconciled savings. Registration fees and subscriptions remain separate; existing amounts, obligations and accepted terms are unchanged.
+
 Local activation and test evidence are recorded in
 [membership validation](membership-validation.md).
 

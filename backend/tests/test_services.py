@@ -57,7 +57,7 @@ def test_pending_contribution_is_not_confirmed_savings(db):
     assert confirmed_savings_total(db, member.id) == Decimal("0")
 
 
-def test_verified_contribution_is_confirmed_savings(db):
+def test_legacy_verified_contribution_is_not_reconciled_ledger_savings(db):
     member = create_member(db, MemberCreate(member_number="IS-1043", first_name="Nyasha", last_name="Dube"))
     # A verifying user must exist for the verification step.
     verifier = create_user(db, UserCreate(email="verifier@example.com", password="verifypass123", role_id=None))
@@ -73,8 +73,8 @@ def test_verified_contribution_is_confirmed_savings(db):
     )
     verified = verify_contribution(db, contribution.id, verified_by=verifier.id, note="Office receipt reviewed.")
     assert verified.status == "Verified"
-    # Only verified contributions count as confirmed savings.
-    assert confirmed_savings_total(db, member.id) == Decimal("80.00")
+    # A legacy Verified row is not evidence of reconciliation or a ledger credit.
+    assert confirmed_savings_total(db, member.id) == Decimal("0")
 
 
 def test_reversed_contribution_not_counted(db):

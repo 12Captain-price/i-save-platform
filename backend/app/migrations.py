@@ -21,8 +21,9 @@ import app.models  # noqa: F401
 
 
 INITIAL_REVISION = "0001_initial_schema"
-ADOPTION_HEAD = "0011_documents_enrolment"
+ADOPTION_HEAD = "0012_savings_ledger"
 AUTH_TABLES = {"auth_sessions", "user_permissions", "login_throttles", "registration_submissions", "application_events", "savings_interests", "application_submissions", "application_registration_payments", "membership_approvals", "password_setup_invitations", "plan_drafts", "plan_draft_versions", "business_settings_versions", "business_settings_publications", "application_settings_snapshots", "subscription_settings_snapshots", "fee_rate_versions", "fee_rate_publications", "fee_obligations", "subscription_fee_payments"}
+AUTH_TABLES |= {'savings_contributions','savings_events','savings_ledger_entries'}
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 AUTH_TABLES |= {'registration_evidence_profiles', 'application_evidence', 'evidence_reviews', 'plan_approvals', 'plan_publications', 'plan_applications', 'plan_enrolments', 'plan_application_events'}
 
@@ -46,6 +47,15 @@ def require_current_schema(database: Engine, *, verify_structure: bool = True) -
             if verify_structure and current == heads and set(Base.metadata.tables).issubset(tables)
             else []
         )
+        if verify_structure and current==heads and 'savings_ledger_entries' in tables:
+            if connection.dialect.name=='postgresql':
+                triggers=set(connection.execute(text("SELECT t.tgname FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND NOT t.tgisinternal AND c.relname IN ('savings_events','savings_contributions','savings_ledger_entries')")).scalars())
+                if triggers!={'savings_events_immutable','savings_ledger_entries_immutable','savings_payment_immutable','savings_posting_guard'}:
+                    differences.append('Savings integrity triggers differ')
+            elif connection.dialect.name=='sqlite':
+                triggers=set(connection.execute(text("SELECT name FROM sqlite_master WHERE type='trigger' AND tbl_name IN ('savings_events','savings_ledger_entries')")).scalars())
+                if triggers!={'savings_events_no_update','savings_events_no_delete','savings_ledger_entries_no_update','savings_ledger_entries_no_delete'}:
+                    differences.append('Savings integrity triggers differ')
     if current != heads or not set(Base.metadata.tables).issubset(tables):
         raise RuntimeError(
             "Database schema is not at the required Alembic revision. Run "
@@ -155,6 +165,13 @@ def schema_differences(connection, *, legacy: bool = False) -> list[str]:
             ungrouped=normal_check('application_id IS NOT NULL AND subscription_id IS NULL OR application_id IS NULL AND subscription_id IS NOT NULL')
             if table=='fee_obligations' and expected=={('ck_fee_obligation_target',grouped)} and actual=={('ck_fee_obligation_target',ungrouped)}:
                 actual=expected
+            savings_renderings = {
+                'savings_contributions': ('ck_savings_positive', 'amount > 0', 'amount > 0::numeric'),
+                'savings_ledger_entries': ('ck_savings_entry_sign', "(kind = 'Credit' AND amount > 0 AND reverses_id IS NULL) OR (kind = 'Reversal' AND amount < 0 AND reverses_id IS NOT NULL)", "kind::text = 'Credit'::text AND amount > 0::numeric AND reverses_id IS NULL OR kind::text = 'Reversal'::text AND amount < 0::numeric AND reverses_id IS NOT NULL"),
+            }
+            if table in savings_renderings and connection.dialect.name=='postgresql':
+                name,declared,reflected=savings_renderings[table]
+                if expected=={(name,normal_check(declared))} and actual=={(name,normal_check(reflected))}:actual=expected
             if actual!=expected:differences.append(f"{table}: check constraints differ")
         elif checks:
             differences.append(f"{table}: unexpected check constraints")

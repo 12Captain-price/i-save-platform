@@ -1,0 +1,11 @@
+# Fresh browser fixtures, separate from the regression database and normal services.
+services:
+  backend:
+    image: isave-savings-test-backend
+    environment:
+      APP_ENV: test
+      DOCUMENT_SCAN_TEST_ONLY: "true"
+    ports: !override ["127.0.0.1:18031:8000"]
+  frontend:
+    image: isave-savings-test-frontend
+    ports: !override ["127.0.0.1:13031:3000"]

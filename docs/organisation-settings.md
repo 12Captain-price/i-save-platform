@@ -1,5 +1,7 @@
 # Organisation settings foundation
 
+The subsequent [savings contributions and reconciliation milestone](savings-contributions.md) introduces ledger-backed, currency-separated confirmed savings. Legacy Verified contribution rows do not count as reconciled savings. Registration fees and subscriptions remain separate; existing amounts, obligations and accepted terms are unchanged.
+
 The subsequent [fee currency extension and isolated rehearsal](fee-currency-and-settings-rehearsal.md)
 adds explicit obligation freezing before converted payment, versioned USD-to-ZiG
 rates and separate subscription settlement. Registration fee/review settings now
@@ -179,3 +181,7 @@ No production sending, push or merge was performed.
 # Current extension: private registration documents
 
 See [registration documents and plan enrolment](registration-documents-enrolment.md) for the published requirement controls and submission-time snapshots. Existing settings/history remain unchanged; old versions read with unenforced document defaults. Retention can remain unset, and configuring a period does not implement deletion. Earlier validation below describes the original settings milestone.
+
+## Savings contribution controls
+
+The new optional savings separation-of-duties setting and weekly-allocation convention apply only to future recorded contributions. Unset separation enforces three distinct actors; unset weekly allocation requires explicit contribution allocation/extra authorisation. Settings drafts have no effect, and publication/effective dates use the existing audited settings workflow. Existing contribution policy snapshots, accepted plan terms, fees and posted ledger entries are not rewritten. Same-person savings processing is not authorised by the registration-fee exception. See the consolidated savings report for supported values and outstanding policy decisions.

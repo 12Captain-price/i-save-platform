@@ -135,3 +135,6 @@ from app.security.body_limit import EvidenceBodyLimit
 app.include_router(evidence_router)
 app.include_router(enrolment_router)
 app.add_middleware(EvidenceBodyLimit)
+
+from app.routers.savings import router as savings_router
+app.include_router(savings_router)

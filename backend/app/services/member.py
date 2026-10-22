@@ -71,16 +71,10 @@ def delete_member(db: Session, member_id: int) -> bool:
 
 
 def confirmed_savings_total(db: Session, member_id: int) -> Decimal:
-    """Sum of verified contributions only. Pending contributions are excluded."""
-    total = (
-        db.query(Contribution.amount)
-        .filter(
-            Contribution.member_id == member_id,
-            Contribution.status == "Verified",
-        )
-        .all()
-    )
-    return sum((row[0] for row in total), Decimal("0"))
+    """Compatibility helper: USD ledger only; never mix currencies or legacy rows."""
+    from app.models.savings import SavingsLedgerEntry
+    rows=db.query(SavingsLedgerEntry.amount).filter_by(member_id=member_id,currency='USD').all()
+    return sum((r[0] for r in rows),Decimal('0'))
 
 
 def enrol_in_plan(db: Session, member_id: int, plan_id: int) -> MemberPlan:

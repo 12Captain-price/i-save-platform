@@ -171,4 +171,4 @@ def test_workflow_consumes_published_values_and_preserves_old_payments(client,db
     assert overview['subscription_due_day']==7
     assert fees['registration_fees'][0]['amount']=='30.00' and fees['registration_fees'][0]['currency']=='EUR'
     assert fees['subscriptions'][0]['due_date'].endswith('-07')
-    assert overview['savings']['available'] is False
+    assert overview['savings']['available'] is True

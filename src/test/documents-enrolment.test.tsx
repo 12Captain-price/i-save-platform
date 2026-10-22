@@ -1,13 +1,23 @@
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { RegistrationEvidence } from "@/components/auth/RegistrationEvidence";
-import { MemberPlans, PlanOffers } from "@/components/portal/MemberPlans";
+import { MemberPlans, PlanOffers, MemberPlanSummary } from "@/components/portal/MemberPlans";
 import { ApplicationDocuments } from "@/components/portal/ApplicationDocuments";
 import { PlanPublication } from "@/components/portal/PlanPublication";
 import { PlanApplicationReview } from '@/components/portal/PlanApplicationReview';
 import { handleAuthentication } from "@/lib/auth-server";
 
 const state = vi.hoisted(() => ({ permissions: ["plans:own"], refresh: vi.fn() }));
+it('shows readable enrolment separators and a clear loading message',async()=>{
+ let resolve!:(value:Response)=>void;
+ vi.stubGlobal('fetch',vi.fn(()=>new Promise<Response>(done=>{resolve=done})));
+ render(<MemberPlanSummary/>);
+ expect(screen.getByRole('status')).toHaveTextContent('Loading enrolment summary...');
+ resolve(Response.json({items:[{id:1,terms:{category:'education'},status:'Active',weekly_target:'10.00',currency:'USD',enrolment:{start_date:'2026-10-21',end_date:'2027-06-21'}}]}));
+ await screen.findByText('education · Active · Weekly target 10.00 USD');
+ expect(screen.getByText('Start 2026-10-21 · Programme completion 2027-06-21')).toBeInTheDocument();
+ expect(document.body.textContent).not.toContain(' ? ');
+});
 vi.mock("@/components/auth/AuthProvider", () => ({
   useAuth: () => ({ identity: { permissions: state.permissions }, refresh: state.refresh }),
 }));

@@ -163,7 +163,7 @@ test("settings drafts, safe retry, publication and real fee/activation/member co
   );
   await page.getByRole("button", { name: "Log out", exact: true }).click();
   await login(page, applicant);
-  await expect(page.getByText("Savings summary not available yet")).toBeVisible();
+  await expect(page.getByText("No confirmed ledger credits recorded.")).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Registration fee — EUR 30 — Paid" }),
   ).toBeVisible();

@@ -43,6 +43,8 @@ stabilisation milestone. No production deployment or paid services are requested
 | 4. Backup and recovery | Local PostgreSQL dump/restore drill is part of Phase 1; production backup centre is still outstanding | Approved recovery point/time targets and retention; encrypted separate storage; schedules/manual backups; verification, access control, failure alerts and regular restore drills |
 | 5. Staging and rollout | No production readiness established | Full browser/API UAT, security review, load tests, HTTPS/secret configuration, monitored staging, rollback, privacy/legal review, staff training, organisational go-live approval |
 
+The [savings contributions and reconciliation milestone](savings-contributions.md) adds pending office recording, separate verification/reconciliation, append-only currency ledgers, linked reversals, owned history and ledger-backed summaries. Its consolidated report records validation, preservation and activation status; it does not approve unresolved policy or production operation.
+
 ## Ordered implementation backlog
 
 The combined [registration-documents and plan-enrolment milestone](registration-documents-enrolment.md) adds private evidence review, future-application requirement snapshots, explicit plan approval/publication, immutable member acceptance and separate eight-calendar-month enrolment activation. No plan is automatically published, no existing application is retrospectively verified, and no enrolment action posts money. See the consolidated report for validation, local migration activation, scanner/retention dependencies and isolated manual rehearsal.

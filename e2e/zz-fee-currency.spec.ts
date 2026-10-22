@@ -166,7 +166,7 @@ test("unpublished rate, private publication retry, frozen registration and subsc
   await page.getByRole("button", { name: "Log out", exact: true }).click();
   await login(page, "fx-member@example.test");
   await expect(page.getByText("Actual payment: ZiG 680.00")).toBeVisible();
-  await expect(page.getByText("Savings summary not available yet")).toBeVisible();
+  await expect(page.getByText("No confirmed ledger credits recorded.")).toBeVisible();
   await page.goto("/portal/member/fees", { waitUntil: "domcontentloaded" });
   await expect(page.getByText("Actual payment: ZiG 680.00")).toBeVisible();
   await expect(page.getByText(/Actual payment: ZiG 175.00/)).toBeVisible();

@@ -338,6 +338,7 @@ function DraftDirectory() {
                 <Button
                   variant="outline"
                   onClick={() => {
+                    setNotice("");
                     setSelected(draft.draft_id);
                     setCreating(false);
                   }}

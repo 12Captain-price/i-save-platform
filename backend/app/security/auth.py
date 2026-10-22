@@ -19,6 +19,7 @@ bearer = HTTPBearer(auto_error=False)
 RESOURCES = ("members", "applications", "contributions", "fees", "subscriptions", "plans", "verifications", "audit", "users", "roles")
 PERMISSIONS = {f"{r}:{action}" for r in RESOURCES for action in ("read", "write")}
 PERMISSIONS.discard("audit:write")
+PERMISSIONS |= {"savings:"+c for c in ["read","record","verify","reconcile","reverse","extra","own"]}
 PERMISSIONS.add("applications:assist")
 PERMISSIONS |= {'documents:view', 'documents:review', 'documents:replace', 'plans:approve', 'plans:publish', 'plan-applications:review', 'enrolments:activate', 'plans:own'}
 PERMISSIONS |= {"subscription-fees:record", "subscription-fees:verify"}
@@ -82,6 +83,10 @@ def permissions(db, user):
                            .where(UserPermission.user_id == user.id))
     for code, allowed in overrides:
         codes.add(code) if allowed else codes.discard(code)
+    if not user.role or user.role.name not in {'administrator','staff','finance'}:
+        codes -= {'savings:'+c for c in ['read','record','verify','reconcile','reverse','extra']}
+    if not user.role or user.role.name!='member':
+        codes.discard('savings:own')
     # Security administration is never delegable to non-administrator roles.
     if not user.role or user.role.name != "administrator":
         codes -= {'plans:approve', 'plans:publish'}
