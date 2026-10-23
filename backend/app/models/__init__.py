@@ -45,3 +45,4 @@ import app.models.fee_currency
 import app.models.evidence_enrolment
 
 import app.models.savings
+import app.models.withdrawal

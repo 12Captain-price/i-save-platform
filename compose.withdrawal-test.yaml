@@ -1,0 +1,12 @@
+# TEST ONLY: never combine with normal compose.yaml; no operational mounts.
+services:
+  backend:
+    image: isave-withdrawal-test-backend
+    environment:
+      APP_ENV: test
+      DOCUMENT_SCAN_TEST_ONLY: "true"
+    command: ["sh", "-c", "python -m app.migrations upgrade && exec python -m app.withdrawal_rehearsal serve"]
+    ports: !override ["127.0.0.1:${WITHDRAWAL_BACKEND_PORT:-18050}:8000"]
+  frontend:
+    image: isave-withdrawal-test-frontend
+    ports: !override ["127.0.0.1:${WITHDRAWAL_FRONTEND_PORT:-13050}:3000"]

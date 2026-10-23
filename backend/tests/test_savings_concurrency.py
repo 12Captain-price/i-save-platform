@@ -22,7 +22,7 @@ def test_concurrent_post_verify_reconcile_reverse_and_append_only(migration_data
     with Session(engine) as db:
         actor=db.query(User).filter_by(email='concurrent-admin@example.test').one();actor_id=actor.id
         enrolment=db.query(PlanEnrolment).one()
-        body=Record(request_key=uuid4(),enrolment_id=enrolment.application_id,amount='5.00',currency='USD',payment_date=now().date(),method='Synthetic cash',reference='CONCURRENT-SYNTHETIC')
+        body=Record(request_key=uuid4(),enrolment_id=enrolment.application_id,amount='5.00',currency='USD',payment_date=enrolment.start_date,method='Synthetic cash',reference='CONCURRENT-SYNTHETIC')
     def record(_):
         with Session(engine) as db:
             r=savings.record(db,db.get(User,actor_id),body);db.commit();return r

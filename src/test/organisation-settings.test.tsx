@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { OrganisationSettings } from '@/components/portal/OrganisationSettings';
 import { RegistrationHelp } from '@/components/site/RegistrationHelp';
@@ -46,4 +46,13 @@ it('uses published contacts and does not fall back to stale contacts after an er
   const email=await screen.findByRole('link',{name:'office@example.test'});expect(email).toHaveAttribute('href','mailto:office@example.test');
   expect(screen.getByRole('link',{name:'+263 29 226 1341'})).toHaveAttribute('href','tel:+263292261341');
   expect(screen.getByText('Synthetic office')).toBeInTheDocument();
+});
+it('uses readable withdrawal decisions in effective values, publication preview and history',async()=>{
+ const saved={...terms,withdrawal_mode:'full_or_partial',withdrawal_separation:'processor_verifier_separate'};
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue(Response.json({...state,active_terms:saved,versions:[{...state.versions[0],terms:saved}],preview:{...state.preview,changes:{withdrawal_mode:{from:'full_only',to:'full_or_partial'}}}})));
+ render(<OrganisationSettings/>);await screen.findByRole('heading',{name:'Edit a draft'});
+ const effective=screen.getByText('View currently effective values').closest('details')!;
+ expect(within(effective).getByText('Full or partial amounts')).toBeInTheDocument();expect(within(effective).getByText('Processor and verifier distinct')).toBeInTheDocument();
+ expect(screen.getByRole('region',{name:'Publication preview'})).toHaveTextContent('Full balance only');expect(screen.getByRole('region',{name:'Publication preview'})).toHaveTextContent('Full or partial amounts');
+ const history=document.getElementById('settings-history')!;expect(within(history).getByText('Processor and verifier distinct')).toBeInTheDocument();expect(history.textContent).not.toContain('processor_verifier_separate');
 });

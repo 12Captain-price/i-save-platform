@@ -11,6 +11,7 @@ from app.models.registration_fee import RegistrationFee as LegacyFee
 from app.models.subscription import Subscription
 from app.models.fee_currency import SubscriptionFeePayment as Payment
 from app.models.savings import SavingsContribution as Contribution, SavingsLedgerEntry as Ledger
+from app.models.withdrawal import WithdrawalDebit,WithdrawalRequest
 
 LIMIT=10000
 
@@ -31,10 +32,12 @@ def records(db,start:date,end:date,currency=None,category=None):
         row('savings_ledger',Ledger.id,Ledger.amount,Ledger.currency,Ledger.recorded_at,Ledger.kind,cast(Ledger.contribution_id,String),Ledger.reverses_id),
         row('savings_pending',Contribution.id,Contribution.amount,Contribution.currency,Contribution.payment_date,Contribution.status,Contribution.reference).where(
             Contribution.status.in_(['Pending verification','Verified','Discrepancy']))]
+    sources += [row('withdrawal_debits',WithdrawalDebit.id,WithdrawalDebit.amount,WithdrawalDebit.currency,WithdrawalDebit.recorded_at,literal('Paid'),cast(WithdrawalDebit.withdrawal_id,String),WithdrawalDebit.withdrawal_id),
+        row('withdrawal_reservations',WithdrawalRequest.id,WithdrawalRequest.amount,WithdrawalRequest.currency,WithdrawalRequest.requested_at,WithdrawalRequest.status,cast(WithdrawalRequest.id,String)).where(WithdrawalRequest.status.in_(['Requested','Approved','Processing','Recorded','Uncertain']))]
     combined=union_all(*sources).subquery()
     # Payment dates are date-only. Ledger instants are interpreted in Harare.
     ledger_date=func.to_char(func.timezone('Africa/Harare',cast(combined.c.date,__import__('sqlalchemy').DateTime(timezone=True))),'YYYY-MM-DD') if db.bind.dialect.name=='postgresql' else func.substr(combined.c.date,1,10)
-    day=case((combined.c.category=='savings_ledger',ledger_date),else_=func.substr(combined.c.date,1,10))
+    day=case((combined.c.category.in_(['savings_ledger','withdrawal_debits','withdrawal_reservations']),ledger_date),else_=func.substr(combined.c.date,1,10))
     query=select(combined).where(day>=str(start),day<=str(end))
     if currency:query=query.where(combined.c.currency==currency)
     if category:query=query.where(combined.c.category==category)
@@ -46,10 +49,10 @@ def records(db,start:date,end:date,currency=None,category=None):
         totals[(r['category'],r['currency'],r['status'])]+=r['amount']
     net=defaultdict(lambda:Decimal('0'))
     for r in rows:
-        if r['category']=='savings_ledger':net[r['currency']]+=r['amount']
+        if r['category'] in {'savings_ledger','withdrawal_debits'}:net[r['currency']]+=r['amount']
     return {'items':result,'total':len(result),'totals':[{'category':k[0],'currency':k[1],'status':k[2],'amount':str(v)} for k,v in sorted(totals.items())],
         'net_ledger_movement':[{'currency':k,'amount':str(v)} for k,v in sorted(net.items())],
-        'definition':'Inclusive dates: subscription obligations use obligation month (first day), fee payments and pending savings use payment date; ledger credits/reversals use posting date in Africa/Harare. Net is movement during this window, not an all-time balance. Only Verified fee payments count as verified receipts; pending records are not verified money. Legacy fees retain reported status without inferred verification. No currencies are combined.'}
+        'definition':'Inclusive dates: subscription obligations use obligation month (first day), fee payments and pending savings use payment date; ledger credits/reversals and withdrawal debits use posting date in Africa/Harare. Active reservations use request date and current state, not historical as-of balances. Net includes withdrawal debits and is movement during this window, not an all-time balance. Only Verified fee payments count as verified receipts; pending records are not verified money. Legacy fees retain reported status without inferred verification. No currencies are combined.'}
 
 
 def csv_export(result):

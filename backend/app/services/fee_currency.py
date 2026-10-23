@@ -75,8 +75,9 @@ def check_reference(db,reference):
     key=digest(reference.lower())
     from app.models.savings import SavingsContribution
     from app.models.contribution import Contribution
+    from app.models.withdrawal import WithdrawalPayout
     normalized=normalized_reference(reference)
-    for column in [SavingsContribution.reference,Contribution.contribution_reference,ApplicationRegistrationPayment.reference,SubscriptionFeePayment.reference,RegistrationFee.fee_reference]:
+    for column in [WithdrawalPayout.reference,SavingsContribution.reference,Contribution.contribution_reference,ApplicationRegistrationPayment.reference,SubscriptionFeePayment.reference,RegistrationFee.fee_reference]:
         if any(normalized_reference(value)==normalized for (value,) in db.query(column)):
             raise APIError(409,'duplicate_reference','Receipt/reference is already recorded')
     if db.query(ApplicationRegistrationPayment).filter_by(reference_key=key).first() or db.query(SubscriptionFeePayment).filter_by(reference_key=key).first() or db.query(RegistrationFee).filter(func.lower(RegistrationFee.fee_reference)==reference.lower()).first():

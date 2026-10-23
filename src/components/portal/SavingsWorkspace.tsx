@@ -7,6 +7,8 @@ import { Feedback, useRecords } from "./AdminDataScreens";
 export type SavingsSummaryData = {
   available: boolean;
   confirmed: { currency: string; amount: string }[];
+  reserved?: { currency: string; amount: string }[];
+  available_funds?: { currency: string; amount: string }[];
   pending: { currency: string; amount: string }[];
   legacy_requires_review: number;
   message: string;
@@ -59,6 +61,8 @@ export function SavingsSummary({ data }: { data: SavingsSummaryData }) {
       ) : (
         <p>No confirmed ledger credits recorded.</p>
       )}
+      {data.reserved&&<section aria-label="Reserved withdrawals"><h3 className="font-semibold">Reserved for pending withdrawals</h3>{data.reserved.length?data.reserved.map(t=><p key={t.currency}>{money(t.amount,t.currency)} reserved</p>):<p>No withdrawal funds reserved.</p>}</section>}
+      {data.available_funds&&<section aria-label="Available savings"><h3 className="font-semibold">Available after withdrawal reservations</h3>{data.available_funds.length?data.available_funds.map(t=><p key={t.currency}>{money(t.amount,t.currency)} available</p>):<p>No available confirmed savings recorded.</p>}</section>}
       <h3 className="font-semibold">Pending — excluded from confirmed savings</h3>
       {data.pending.length ? (
         data.pending.map((t) => <p key={t.currency}>{money(t.amount, t.currency)}</p>)

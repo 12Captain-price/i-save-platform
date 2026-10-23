@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { navigation, screenTitle, type Role } from "@/lib/portal/navigation";
 import { OrganisationOverview, MembersDirectory } from "./AdminDataScreens";
 import { SubscriptionPayments } from "./SubscriptionPayments";
+import {Withdrawals} from "./Withdrawals";
 import { FinancialReports } from "./FinancialOperations";
 import { OrganisationSettings } from "./OrganisationSettings";
 import { PlanDrafts } from "./PlanDrafts";
@@ -18,10 +19,11 @@ import { MemberFees } from "./MembershipReview";
 import { ApplicationScreens } from "./ApplicationScreens";
 import { AssistedRegistration } from "@/components/auth/AssistedRegistration";
 const supported: Record<Role, string[]> = {
-  member: ["contributions", "dashboard", "fees", "plans", "applications"],
-  staff: ["payments", "reports", "contributions", "dashboard", "registrations", "assist-registration", "plan-applications"],
-  finance: ["reports", "contributions", "verification", "reconciliation", "ledger", "dashboard", "fees"],
+  member: ["withdrawals", "contributions", "dashboard", "fees", "plans", "applications"],
+  staff: ["withdrawals", "payments", "reports", "contributions", "dashboard", "registrations", "assist-registration", "plan-applications"],
+  finance: ["withdrawals", "reports", "contributions", "verification", "reconciliation", "ledger", "dashboard", "fees"],
   admin: [
+    "withdrawals",
     "reports",
     "contributions",
     "dashboard",
@@ -35,6 +37,7 @@ const supported: Record<Role, string[]> = {
   ],
 };
 const descriptions: Record<string, string> = {
+  withdrawals: "Request eligible savings withdrawals and review manual payout evidence. Reservations and approvals are separate from verified payment.",
   applications:'Your recorded plan applications and enrolments, separate from membership registration and category interests.',
   contributions: "Record, verify and reconcile office contributions. Confirmed savings comes only from the ledger.",
   verification: "Review recorded office contributions. Verification alone does not increase confirmed savings.",
@@ -308,7 +311,7 @@ export function AuthenticatedWorkspace({ role, screen }: { role: Role; screen: s
                 "This service is awaiting implementation. No simulated transactions are shown."}
             </p>
           </div>
-          {screen === "reports" && role !== "member" ? <FinancialReports/> : screen === "contributions" || (role === "finance" && ["verification","reconciliation","ledger"].includes(screen)) ? <SavingsWorkspace key={screen} member={role === "member"} initialStatus={screen === "verification" ? "Pending verification" : screen === "reconciliation" ? "Verified" : screen === "ledger" ? "Confirmed" : ""}/> : role === "staff" && screen === "payments" ? <SubscriptionPayments/> : (role === "staff" || role === "finance") && screen === "dashboard" ? (
+          {screen === "withdrawals" ? <Withdrawals member={role === "member"}/> : screen === "reports" && role !== "member" ? <FinancialReports/> : screen === "contributions" || (role === "finance" && ["verification","reconciliation","ledger"].includes(screen)) ? <SavingsWorkspace key={screen} member={role === "member"} initialStatus={screen === "verification" ? "Pending verification" : screen === "reconciliation" ? "Verified" : screen === "ledger" ? "Confirmed" : ""}/> : role === "staff" && screen === "payments" ? <SubscriptionPayments/> : (role === "staff" || role === "finance") && screen === "dashboard" ? (
             <TaskHome role={role} />
           ) : (role === "admin" && screen === "finance") ||
             (role === "finance" && screen === "fees") ? (

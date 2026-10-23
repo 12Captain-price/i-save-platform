@@ -1,3 +1,4 @@
+import {withdrawalOptions,withdrawalPolicyLabels,withdrawalPolicyValue} from '@/lib/withdrawal-policy';
 import { FeeRateSettings } from "./FeeRateSettings";
 import { useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -5,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Feedback, useRecords } from "./AdminDataScreens";
 
 export const settingLabels = {
+  ...withdrawalPolicyLabels,
   savings_week_start: "Savings weekly allocation convention (optional)",
   savings_separation: "Savings separation of duties (approval pending when unset)",
   office: "Office address",
@@ -34,6 +36,7 @@ type Version = {
   version: number;
   terms: Terms;
   missing_decisions: Key[];
+  withdrawal_policy_blockers?: string[];
   actor_email: string | null;
   recorded_at: string;
 };
@@ -60,6 +63,7 @@ type State = {
   };
 };
 const groups: { title: string; description: string; keys: Key[] }[] = [
+  {title:"Withdrawal policy",description:"No normal withdrawal decisions are pre-approved. All required decisions must be explicitly published before new requests are available. Limits use separate currencies; no conversion, fees, deductions, interest or penalties. New requests freeze the policy; existing requests and accepted plan terms do not change. Uncertain payouts stay reserved until authorised evidence review.",keys:["withdrawal_mode","withdrawal_limits","withdrawal_usd_min","withdrawal_usd_max","withdrawal_zwg_min","withdrawal_zwg_max","withdrawal_methods","withdrawal_approval_levels","withdrawal_separation","withdrawal_cancellation","withdrawal_failure"]},
   {
     title: "Savings contribution controls",
     description:
@@ -263,7 +267,7 @@ function SettingsEditor({
             {Object.entries(data.active_terms).map(([key, value]) => (
               <div key={key} className="min-w-0">
                 <dt className="text-xs text-muted-foreground">{settingLabels[key as Key]}</dt>
-                <dd className="mt-1 whitespace-pre-wrap break-words text-sm">{show(value)}</dd>
+                <dd className="mt-1 whitespace-pre-wrap break-words text-sm">{(key.startsWith("withdrawal_") ? withdrawalPolicyValue(key,value) : show(value))}</dd>
               </div>
             ))}
           </dl>
@@ -309,7 +313,7 @@ function SettingsEditor({
                     <label htmlFor={"settings-" + key} className="text-sm font-medium">
                       {settingLabels[key]}
                     </label>
-                    {key === "savings_week_start" ? (
+                    {withdrawalOptions[key] ? <select id={"settings-"+key} className={fieldClass} value={String(terms[key]??"")} onChange={e=>setTerms({...terms,[key]:e.target.value?(key==='withdrawal_approval_levels'?Number(e.target.value):e.target.value):null})}><option value="">Decision not approved - processing stays unavailable</option>{withdrawalOptions[key].map(([value,label])=><option key={value} value={value}>{label}</option>)}</select> : key === "savings_week_start" ? (
                       <select
                         id={"settings-" + key}
                         className={fieldClass}
@@ -382,7 +386,7 @@ function SettingsEditor({
                         id={"settings-" + key}
                         className={fieldClass}
                         type={
-                          key.endsWith("_amount") ||
+                          key.startsWith("withdrawal_") || key.endsWith("_amount") ||
                           key === "subscription_due_day" ||
                           key === "document_retention_days"
                             ? "number"
@@ -472,7 +476,7 @@ function SettingsEditor({
             <div key={k} className="rounded-lg border border-border p-3">
               <dt className="text-sm font-semibold">{settingLabels[k as Key]}</dt>
               <dd className="mt-1 whitespace-pre-wrap break-words text-sm text-muted-foreground">
-                {show(change.from)} → {show(change.to)}
+                {k.startsWith("withdrawal_") ? withdrawalPolicyValue(k,change.from) : show(change.from)} → {k.startsWith("withdrawal_") ? withdrawalPolicyValue(k,change.to) : show(change.to)}
               </dd>
             </div>
           ))}
@@ -545,11 +549,12 @@ function SettingsEditor({
                   ? `Missing decisions: ${v.missing_decisions.map((k) => settingLabels[k]).join(", ")}`
                   : "Required fields recorded; due day may be unset."}
               </p>
+              {!!v.withdrawal_policy_blockers?.length&&<div className="mt-3 text-sm"><p className="font-semibold">Withdrawal processing unavailable for new requests</p><ul>{v.withdrawal_policy_blockers.map(b=><li key={b}>{b}</li>)}</ul></div>}
               <dl className="mt-4 grid gap-3 sm:grid-cols-2">
                 {Object.entries(v.terms).map(([k, value]) => (
                   <div key={k} className="min-w-0">
                     <dt className="text-xs text-muted-foreground">{settingLabels[k as Key]}</dt>
-                    <dd className="whitespace-pre-wrap break-words text-sm">{show(value)}</dd>
+                    <dd className="whitespace-pre-wrap break-words text-sm">{(k.startsWith("withdrawal_") ? withdrawalPolicyValue(k,value) : show(value))}</dd>
                   </div>
                 ))}
               </dl>

@@ -140,3 +140,5 @@ from app.routers.savings import router as savings_router
 app.include_router(savings_router)
 from app.routers.financial_operations import router as financial_operations_router
 app.include_router(financial_operations_router)
+from app.routers.withdrawals import router as withdrawals_router
+app.include_router(withdrawals_router)

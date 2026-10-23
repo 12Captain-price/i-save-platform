@@ -86,6 +86,10 @@ def history(db,row):
 
 
 def action(db,actor,identifier,kind,body):
+    # All balance-reducing workflows lock the enrolled programme first.
+    existing=db.get(Contribution,identifier)
+    if existing:
+        db.execute(select(PlanEnrolment).where(PlanEnrolment.application_id==existing.enrolment_id).with_for_update()).scalar_one()
     row=db.execute(select(Contribution).where(Contribution.id==identifier).with_for_update().execution_options(populate_existing=True)).scalar_one_or_none()
     if not row:fail('Contribution not found',404)
     advisory(db,'savings-event-key:'+str(body.request_key))
@@ -118,6 +122,8 @@ def action(db,actor,identifier,kind,body):
         row.status='Confirmed' if body.outcome=='Matched' else 'Discrepancy'
     elif kind=='reverse':
         if row.status!='Confirmed' or body.outcome!='Reversed':fail('Only a confirmed contribution can be reversed once')
+        from app.services.withdrawals import funds
+        if Decimal(funds(db,row.enrolment_id)['available'])<row.amount:fail('Reserved or paid withdrawal funds require reviewed correction; reversal cannot spend them')
         row.status='Reversed'
     else:fail('Unsupported action',404)
     e=event(db,actor,row,kind,body)
@@ -146,11 +152,21 @@ def present(db,row):
 
 
 def summary(db,member_id=None):
+    from app.models.withdrawal import WithdrawalDebit,WithdrawalRequest
+    from app.services.withdrawals import RESERVED
     totals=db.query(Ledger.currency,func.sum(Ledger.amount))
     pending=db.query(Contribution.currency,func.sum(Contribution.amount)).filter(Contribution.status.in_(['Pending verification','Verified','Discrepancy']))
     legacy=db.query(Legacy)
     if member_id is not None:
         totals=totals.filter(Ledger.member_id==member_id);pending=pending.filter(Contribution.member_id==member_id);legacy=legacy.filter(Legacy.member_id==member_id)
-    return {'available':True,'confirmed':[{'currency':c,'amount':str(a)} for c,a in totals.group_by(Ledger.currency)],
+    values={c:Decimal(a) for c,a in totals.group_by(Ledger.currency)}
+    debits=db.query(WithdrawalDebit.currency,func.sum(WithdrawalDebit.amount))
+    reserves=db.query(WithdrawalRequest.currency,func.sum(WithdrawalRequest.amount)).filter(WithdrawalRequest.status.in_(RESERVED))
+    if member_id is not None:debits=debits.filter(WithdrawalDebit.member_id==member_id);reserves=reserves.filter(WithdrawalRequest.member_id==member_id)
+    for c,a in debits.group_by(WithdrawalDebit.currency):values[c]=values.get(c,Decimal('0'))+a
+    reserved={c:Decimal(a) for c,a in reserves.group_by(WithdrawalRequest.currency)}
+    return {'available':True,'confirmed':[{'currency':c,'amount':format(a,'.2f')} for c,a in sorted(values.items())],
+        'reserved':[{'currency':c,'amount':format(a,'.2f')} for c,a in sorted(reserved.items())],
+        'available_funds':[{'currency':c,'amount':format(a-reserved.get(c,Decimal('0')),'.2f')} for c,a in sorted(values.items())],
         'pending':[{'currency':c,'amount':str(a)} for c,a in pending.group_by(Contribution.currency)],
-        'legacy_requires_review':legacy.count(),'message':'Confirmed savings uses verified and reconciled ledger credits minus linked reversals. Fees and subscriptions are excluded. Currencies are never converted.'}
+        'legacy_requires_review':legacy.count(),'message':'Confirmed savings uses verified and reconciled ledger credits minus linked reversals and verified withdrawal debits. Fees and subscriptions are excluded. Currencies are never converted.'}

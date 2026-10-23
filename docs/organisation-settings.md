@@ -188,3 +188,8 @@ See [registration documents and plan enrolment](registration-documents-enrolment
 ## Savings contribution controls
 
 The new optional savings separation-of-duties setting and weekly-allocation convention apply only to future recorded contributions. Unset separation enforces three distinct actors; unset weekly allocation requires explicit contribution allocation/extra authorisation. Settings drafts have no effect, and publication/effective dates use the existing audited settings workflow. Existing contribution policy snapshots, accepted plan terms, fees and posted ledger entries are not rewritten. Same-person savings processing is not authorised by the registration-fee exception. See the consolidated savings report for supported values and outstanding policy decisions.
+
+
+## Withdrawal policy drafts
+
+The [withdrawal extension](withdrawals.md) adds optional versioned operational decisions for future requests only. All normal values remain unset. Missing decisions block withdrawal requests, while unrelated settings publication continues to work. Existing accepted plan terms, requests, payments and obligations are not rewritten. The registration-fee same-person policy does not authorise same-person withdrawals.

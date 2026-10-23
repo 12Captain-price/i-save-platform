@@ -29,6 +29,17 @@ class BusinessTerms(BaseModel):
 
     savings_separation: Literal['distinct_all','recorder_separate','same_actor_allowed'] | None = None
     savings_week_start: Literal['monday','enrolment_start'] | None = None
+    withdrawal_mode:Literal['full_only','full_or_partial']|None=None
+    withdrawal_limits:Literal['no_limits','bounded']|None=None
+    withdrawal_usd_min:Decimal|None=Field(None,gt=0,max_digits=12,decimal_places=2)
+    withdrawal_usd_max:Decimal|None=Field(None,gt=0,max_digits=12,decimal_places=2)
+    withdrawal_zwg_min:Decimal|None=Field(None,gt=0,max_digits=12,decimal_places=2)
+    withdrawal_zwg_max:Decimal|None=Field(None,gt=0,max_digits=12,decimal_places=2)
+    withdrawal_methods:Literal['cash_only','bank_only','cash_and_bank']|None=None
+    withdrawal_approval_levels:int|None=Field(None,ge=1,le=2,strict=True)
+    withdrawal_separation:Literal['distinct_all','processor_verifier_separate','same_actor_allowed']|None=None
+    withdrawal_cancellation:Literal['before_processing_only']|None=None
+    withdrawal_failure:Literal['evidence_review_before_release']|None=None
 
     @model_validator(mode='after')
     def amounts(self):
@@ -38,7 +49,7 @@ class BusinessTerms(BaseModel):
 
     def missing(self):
         optional = {'subscription_separation','savings_separation', 'savings_week_start', 'subscription_due_day', 'document_retention_days', 'require_national_id', 'require_residence_evidence', 'require_income_evidence', 'require_evidence_acceptance'}
-        return [k for k,v in self.model_dump().items() if k not in optional and not v]
+        return [k for k,v in self.model_dump().items() if k not in optional and not k.startswith('withdrawal_') and not v]
 
 
 class SettingsSave(BaseModel):

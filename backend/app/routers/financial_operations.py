@@ -38,7 +38,7 @@ def run(body:Run,actor=Depends(protected('subscriptions:generate')),db:Session=D
 
 
 @router.get('/reports')
-def report(start:date,end:date,currency:str|None=Query(None,pattern=r'^[A-Z]{3}$'),category:str|None=Query(None,pattern=r'^(registration_payments|legacy_registration|subscription_obligations|subscription_payments|savings_ledger|savings_pending)$'),
+def report(start:date,end:date,currency:str|None=Query(None,pattern=r'^[A-Z]{3}$'),category:str|None=Query(None,pattern=r'^(registration_payments|legacy_registration|subscription_obligations|subscription_payments|savings_ledger|savings_pending|withdrawal_debits|withdrawal_reservations)$'),
     skip:int=Query(0,ge=0),limit:int=Query(25,ge=1,le=100),export:bool=False,
     actor=Depends(office('reports:read')),db:Session=Depends(get_db)):
     if export:

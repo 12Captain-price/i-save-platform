@@ -21,9 +21,10 @@ import app.models  # noqa: F401
 
 
 INITIAL_REVISION = "0001_initial_schema"
-ADOPTION_HEAD = "0013_recurring_reports"
+ADOPTION_HEAD = "0014_withdrawals"
 AUTH_TABLES = {"auth_sessions", "user_permissions", "login_throttles", "registration_submissions", "application_events", "savings_interests", "application_submissions", "application_registration_payments", "membership_approvals", "password_setup_invitations", "plan_drafts", "plan_draft_versions", "business_settings_versions", "business_settings_publications", "application_settings_snapshots", "subscription_settings_snapshots", "fee_rate_versions", "fee_rate_publications", "fee_obligations", "subscription_fee_payments"}
 AUTH_TABLES |= {'savings_contributions','savings_events','savings_ledger_entries'}
+AUTH_TABLES |= {'withdrawal_requests','withdrawal_events','withdrawal_payouts','withdrawal_debits'}
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 AUTH_TABLES |= {'registration_evidence_profiles', 'application_evidence', 'evidence_reviews', 'plan_approvals', 'plan_publications', 'plan_applications', 'plan_enrolments', 'plan_application_events'}
 
@@ -56,6 +57,13 @@ def require_current_schema(database: Engine, *, verify_structure: bool = True) -
                 triggers=set(connection.execute(text("SELECT name FROM sqlite_master WHERE type='trigger' AND tbl_name IN ('savings_events','savings_ledger_entries')")).scalars())
                 if triggers!={'savings_events_no_update','savings_events_no_delete','savings_ledger_entries_no_update','savings_ledger_entries_no_delete'}:
                     differences.append('Savings integrity triggers differ')
+        if verify_structure and current==heads and 'withdrawal_debits' in tables:
+            if connection.dialect.name=='postgresql':
+                names=set(connection.execute(text("SELECT t.tgname FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND NOT t.tgisinternal AND c.relname IN ('withdrawal_requests','withdrawal_events','withdrawal_payouts','withdrawal_debits')")).scalars())
+                if names!={'withdrawal_events_immutable','withdrawal_debits_immutable','withdrawal_request_immutable','withdrawal_payout_immutable','withdrawal_posting_guard'}:differences.append('Withdrawal integrity triggers differ')
+            elif connection.dialect.name=='sqlite':
+                names=set(connection.execute(text("SELECT name FROM sqlite_master WHERE type='trigger' AND tbl_name IN ('withdrawal_events','withdrawal_debits')")).scalars())
+                if names!={'withdrawal_events_no_update','withdrawal_events_no_delete','withdrawal_debits_no_update','withdrawal_debits_no_delete'}:differences.append('Withdrawal integrity triggers differ')
     if current != heads or not set(Base.metadata.tables).issubset(tables):
         raise RuntimeError(
             "Database schema is not at the required Alembic revision. Run "
@@ -166,6 +174,8 @@ def schema_differences(connection, *, legacy: bool = False) -> list[str]:
             if table=='fee_obligations' and expected=={('ck_fee_obligation_target',grouped)} and actual=={('ck_fee_obligation_target',ungrouped)}:
                 actual=expected
             savings_renderings = {
+                'withdrawal_requests': ('ck_withdrawal_positive','amount > 0','amount > 0::numeric'),
+                'withdrawal_debits': ('ck_withdrawal_debit_negative','amount < 0','amount < 0::numeric'),
                 'savings_contributions': ('ck_savings_positive', 'amount > 0', 'amount > 0::numeric'),
                 'savings_ledger_entries': ('ck_savings_entry_sign', "(kind = 'Credit' AND amount > 0 AND reverses_id IS NULL) OR (kind = 'Reversal' AND amount < 0 AND reverses_id IS NOT NULL)", "kind::text = 'Credit'::text AND amount > 0::numeric AND reverses_id IS NULL OR kind::text = 'Reversal'::text AND amount < 0::numeric AND reverses_id IS NOT NULL"),
             }

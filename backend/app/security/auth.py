@@ -24,6 +24,7 @@ PERMISSIONS.add("applications:assist")
 PERMISSIONS |= {'documents:view', 'documents:review', 'documents:replace', 'plans:approve', 'plans:publish', 'plan-applications:review', 'enrolments:activate', 'plans:own'}
 PERMISSIONS |= {"subscription-fees:record", "subscription-fees:verify"}
 PERMISSIONS |= {'subscriptions:generate','reports:read','reports:export'}
+PERMISSIONS |= {'withdrawals:'+c for c in ['own','read','approve','process','verify']}
 PERMISSIONS |= {"plans:drafts:read", "plans:drafts:write", "settings:read", "settings:write", "settings:publish"}
 from app.membership_policy import CAPABILITIES
 PERMISSIONS |= CAPABILITIES

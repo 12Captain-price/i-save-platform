@@ -16,6 +16,7 @@ from app.services.business_settings import active, public_contacts
 router = APIRouter(tags=['organisation settings'])
 PREFIX = '/api/v1/admin/organisation-settings'
 IMPACTS = {
+    'withdrawals':'New eligible withdrawal requests snapshot the complete explicitly published withdrawal policy. Incomplete decisions keep processing unavailable. Existing requests, accepted terms and payout history remain unchanged. Approval never debits savings; only verified manual payout does.',
     'savings': 'New contributions snapshot the effective separation rule. Unset requires three distinct actors. Publishing never changes accepted plan terms, historical controls, ledger entries or fee obligations.',
     'contacts': 'Public Contact, footer, registration help and application follow-up use the effective published contacts on their next load. Publishing does not send email.',
     'registration': 'Future first payment recordings snapshot the fee amount/currency and reviewer wording. Existing recorded payments and their approval requirements do not change.',
@@ -30,8 +31,9 @@ def latest_id(db):
 
 def presented(row):
     terms = BusinessTerms.model_validate_json(row.snapshot)
+    from app.services.withdrawals import policy_blockers
     return {'version':row.id, 'base_version':row.base_version, 'terms':terms.model_dump(mode='json'),
-            'missing_decisions':terms.missing(), 'actor_email':row.actor_email, 'recorded_at':row.recorded_at}
+            'missing_decisions':terms.missing(), 'withdrawal_policy_blockers':policy_blockers(terms.model_dump(mode='json')), 'actor_email':row.actor_email, 'recorded_at':row.recorded_at}
 
 
 def blockers(db, row):
@@ -71,7 +73,7 @@ def history(actor=Depends(access('settings:read')), db:Session=Depends(get_db)):
     return {'active_version':current, 'active_terms':terms, 'head_version':latest_id(db),
         'versions':[presented(v) for v in versions],
         'publications':[{'version':p.version_id,'effective_at':p.effective_at,'actor_email':p.actor_email,'recorded_at':p.recorded_at} for p in publications],
-        'impacts':IMPACTS, 'unsupported':['Withdrawals','Refunds','Returns','Penalties','Automated recurring billing','Automatic document deletion / retention enforcement','Additional eligibility rules','SMTP credentials and infrastructure'],
+        'impacts':IMPACTS, 'unsupported':['External payout provider transfers','Withdrawal debit reversals / post-payment balance restoration','Refunds','Returns','Penalties','Host scheduler installation','Automatic document deletion / retention enforcement','Additional eligibility rules','SMTP credentials and infrastructure'],
         'preview':None if not versions else {'version':versions[0].id, 'blockers':blockers(db,versions[0]),
             'changes':{k:{'from':terms[k],'to':v} for k,v in json.loads(versions[0].snapshot).items() if v!=terms[k]}}}
 

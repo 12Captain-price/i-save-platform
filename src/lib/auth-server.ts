@@ -164,12 +164,14 @@ async function membership(request: Request, url: URL) {
 
 async function financialOperations(request: Request,url: URL) {
  const path=url.pathname;
- if(!['/api/financial/reports','/api/financial/subscriptions/preview','/api/financial/subscriptions/run'].includes(path))return message('Not found.',404);
- const writing=path.endsWith('/run');
+ const withdrawal=/^\/api\/withdrawals(?:\/(?:eligibility|[1-9][0-9]{0,9}(?:\/(?:receipt|approve|reject|cancel|process|record|verify|uncertain|not_paid))?))?$/.test(path);
+ if(!withdrawal&&!['/api/financial/reports','/api/financial/subscriptions/preview','/api/financial/subscriptions/run'].includes(path))return message('Not found.',404);
+ const writing=withdrawal?request.method==='POST':path.endsWith('/run');
+ if(writing&&withdrawal&&!(path==='/api/withdrawals'||/\/(approve|reject|cancel|process|record|verify|uncertain|not_paid)$/.test(path)))return message('Method not allowed.',405);
  if(request.method!==(writing?'POST':'GET'))return message('Method not allowed.',405);
  const token=tokenFrom(request);if(!token)return expired(request);
  if(writing&&(request.headers.get('origin')!==url.origin||request.headers.get('x-isave-request')!=='1'))return message('Reload and retry.',403);
- const allowed=path.endsWith('/reports')?['start','end','currency','category','skip','limit','export']:['through'];
+ const allowed=withdrawal?(path==='/api/withdrawals'&&!writing?['q','status','skip','limit']:[]):path.endsWith('/reports')?['start','end','currency','category','skip','limit','export']:['through'];
  for(const key of url.searchParams.keys())if(!allowed.includes(key)||url.searchParams.getAll(key).length!==1)return message('Unsupported parameters.',400);
  const body=writing?await boundedBody(request,4096):undefined;
  if(body===null)return message('Request too large.',413);
@@ -541,6 +543,7 @@ export async function handleAuthentication(request: Request): Promise<Response |
   const url = new URL(request.url);
   const path = url.pathname;
   if (
+    !path.startsWith("/api/withdrawals") &&
     !path.startsWith("/api/financial/") &&
     !path.startsWith("/api/savings") &&
     !path.startsWith("/api/public/") &&
@@ -583,7 +586,7 @@ export async function handleAuthentication(request: Request): Promise<Response |
       path.startsWith("/api/admin/fee-rates")
     )
       return await organisationSettings(request, url);
-    if (path.startsWith("/api/financial/")) return await financialOperations(request,url);
+    if (path.startsWith("/api/financial/")||path.startsWith("/api/withdrawals")) return await financialOperations(request,url);
     if (path.startsWith("/api/admin/plan-drafts")) return await planDrafts(request, url);
     if (path.startsWith("/api/membership/")) return await membership(request, url);
     if (path === "/api/registration" || path === "/api/registration/assisted") {

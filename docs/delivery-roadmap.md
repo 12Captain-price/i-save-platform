@@ -127,3 +127,8 @@ The combined [registration-documents and plan-enrolment milestone](registration-
 
 Do not invent answers to this register. Continue independent engineering with
 synthetic data and explicit disabled/unconfigured states where rules are pending.
+
+
+## Withdrawal workflow extension
+
+See [withdrawal implementation and validation](withdrawals.md) for member-owned requests, atomic reservations, fourteen-day notice enforcement, separate manual payout evidence/verification and linked append-only debits. Eight-calendar-month completion and the minimum notice are approved eligibility rules. Normal processing remains blocked until the versioned operational withdrawal policy is explicitly completed and published. Earlier statements that withdrawals are entirely unimplemented are historical; they do not authorise real payouts or replace outstanding policy decisions.
