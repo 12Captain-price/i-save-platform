@@ -126,9 +126,12 @@ def present_application(db,row):
 
 
 def record_event(db,actor,row,status,reason):
-    db.add(PlanApplicationEvent(application_id=row.id,status=status,reason=reason,actor_id=actor.id,actor_email=actor.email))
+    event=PlanApplicationEvent(application_id=row.id,status=status,reason=reason,actor_id=actor.id,actor_email=actor.email)
+    db.add(event)
     audit(db,actor,'plan_application_'+status.lower(),'plan_applications',row.id)
     db.flush()
+    from app.services.account_workflows import member_notice
+    member_notice(db,row.member_id,'plan-application-event:'+str(event.id),'Plan application status: '+status+'. Plan approval does not create a payment or savings credit.','applications')
 
 
 def lock(db,identifier):

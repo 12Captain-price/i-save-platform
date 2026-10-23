@@ -1,0 +1,24 @@
+# Isolated account workflows only. Never combine with normal compose.yaml.
+services:
+  backend:
+    ports: !override ['127.0.0.1:18060:8000']
+    environment:
+      ISAVE_TEST_DATABASE_URL: postgresql+psycopg://postgres@db:5432/isave_test_accounts
+      TEST_POSTGRES_URL: postgresql+psycopg://postgres@db:5432/postgres
+      PASSWORD_SETUP_FRONTEND_URL: http://127.0.0.1:13060
+  frontend:
+    ports: !override ['127.0.0.1:13060:3000']
+  worker:
+    build: ./backend
+    command: ['python','-m','app.account_worker']
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres@db:5432/isave_test_browser
+      APP_ENV: development
+      INVITATION_DELIVERY: mailpit
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      PASSWORD_SETUP_FRONTEND_URL: http://127.0.0.1:13060
+    networks: [default,local_mail]
+    depends_on:
+      backend:
+        condition: service_healthy

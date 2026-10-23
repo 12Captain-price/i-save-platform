@@ -64,3 +64,10 @@ def login(db, email, password, ip):
 
 def revoke_all(db, user_id):
     db.execute(update(AuthSession).where(AuthSession.user_id == user_id, AuthSession.revoked_at.is_(None)).values(revoked_at=now()))
+
+
+def revoke_setup_links(db,user_id):
+    from app.models.account_workflows import AccountLink
+    from app.models.membership import PasswordSetupInvitation
+    for model in (AccountLink,PasswordSetupInvitation):
+        db.execute(update(model).where(model.user_id==user_id,model.consumed_at.is_(None),model.revoked_at.is_(None)).values(revoked_at=now()))

@@ -9,7 +9,7 @@ from app.models.role_permission import RolePermission
 from app.models.user import User
 from app.security.auth import PERMISSIONS, SECURITY_PERMISSIONS, TEMPLATES, permissions
 from app.security.hashing import hash_password
-from app.services.auth import audit, revoke_all
+from app.services.auth import audit, revoke_all, revoke_setup_links
 from app.services import user as users, role as roles
 
 
@@ -31,6 +31,7 @@ def create_user(db, actor, body):
     guard(db, actor)
     if body.role_id is not None and not db.get(Role, body.role_id):
         raise not_found("Role not found")
+    check_role_authority(db,actor,body.role_id)
     normalized = body.model_copy(update={"email": body.email.strip().lower()})
     if db.query(User).filter(func.lower(User.email) == normalized.email).first():
         raise conflict("Email already registered")
@@ -58,6 +59,8 @@ def update_user(db, actor, user_id, body):
         raise APIError(400, "bad_request", "Email and active status cannot be null")
     if "role_id" in data and data["role_id"] is not None and not db.get(Role, data["role_id"]):
         raise not_found("Role not found")
+    if 'role_id' in data and data['role_id'] != target.role_id:
+        check_role_authority(db,actor,data['role_id'])
     if target.id == actor.id and any(k in data and data[k] != getattr(target, k) for k in ("role_id", "is_active")):
         raise APIError(403, "forbidden", "Cannot change your own role or active status")
     losing_admin = target.role_id == admin_role.id and target.is_active and (
@@ -71,6 +74,8 @@ def update_user(db, actor, user_id, body):
         if db.query(User).filter(func.lower(User.email) == data["email"], User.id != user_id).first():
             raise conflict("Email already registered")
     revoke_all(db, user_id)
+    if any(k in data for k in ('email','role_id','is_active')):
+        revoke_setup_links(db,user_id)
     audit(db, actor, "account_updated_sessions_revoked", user_id, details={"fields": sorted(data)})
     return users.update_user(db, user_id, body.model_copy(update=data))
 
@@ -84,6 +89,9 @@ def override_permission(db, actor, user_id, code, allowed):
         raise APIError(403, "forbidden", "Administrator privileges cannot be changed through overrides")
     if code not in PERMISSIONS:
         raise APIError(400, "bad_request", "Unknown permission")
+    restoring_role_grant = allowed is None and db.query(RolePermission).join(Permission, Permission.id == RolePermission.permission_id).filter(RolePermission.role_id == target.role_id, Permission.code == code).first() is not None
+    if (allowed is True or restoring_role_grant) and code not in permissions(db, actor):
+        raise APIError(403, "forbidden", "Cannot grant access you do not hold")
     permission = db.query(Permission).filter_by(code=code).first()
     if not permission:
         raise not_found("Permission catalog not initialized")
@@ -116,6 +124,15 @@ def create_role(db, actor, body):
     return role
 
 
+def check_role_authority(db,actor,role_id):
+    # The older provisioning/role-change endpoints must not bypass the bounded
+    # authority enforced by invitations and individual permission controls.
+    codes=set(db.scalars(select(Permission.code).join(RolePermission,RolePermission.permission_id==Permission.id).where(RolePermission.role_id==role_id)))
+    operational={code for code in codes if not code.endswith(':own')}
+    if not operational <= permissions(db,actor):
+        raise APIError(403,'forbidden','Cannot assign a role with access you do not hold')
+
+
 def update_role(db, actor, role_id, body):
     guard(db, actor)
     role = db.get(Role, role_id)
@@ -139,6 +156,8 @@ def grant_permission(db, actor, role_id, code):
         raise APIError(403, "forbidden", "Security privileges cannot be delegated")
     if code not in PERMISSIONS:
         raise APIError(400, "bad_request", "Unknown permission")
+    if code not in permissions(db, actor):
+        raise APIError(403, "forbidden", "Cannot grant access you do not hold")
     permission = db.query(Permission).filter_by(code=code).first()
     if not permission:
         raise not_found("Permission catalog not initialized")

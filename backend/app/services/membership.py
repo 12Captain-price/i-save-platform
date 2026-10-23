@@ -52,6 +52,14 @@ def lock_actor(db,actor,session,capability):
 def event(db,actor,action,app,note,details=None):
     db.add(AuditEvent(event_type='membership',actor_user_id=actor.id,actor_email=actor.email,action=action,target_table='membership_applications',target_id=str(app.id),details=json.dumps(details) if details else None))
     db.add(ApplicationEvent(application_id=app.id,status=app.status,actor_user_id=actor.id,note=note))
+    if action in {'account_activated','registration_evidence_reviewed','registration_evidence_replaced','membership_approved'}:
+        from app.services.account_workflows import notify
+        member=db.get(Member,app.member_id) if app.member_id else None
+        if member and member.user_id:
+            db.flush()
+            # Stable completed event identity; no document/reason contents in notices.
+            event_id=db.query(func.max(ApplicationEvent.id)).filter_by(application_id=app.id).scalar()
+            notify(db,member.user_id,'application-event:'+str(event_id),'Your membership application has an update. Check your recorded details or contact the office.','dashboard')
 
 
 def check_pending(app):

@@ -5,7 +5,7 @@ import { RegistrationHelp } from '@/components/site/RegistrationHelp';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
-export function PasswordSetup() {
+export function PasswordSetup({recovery=false}:{recovery?:boolean}={}) {
   const [token,setToken]=useState('');
   const [loaded,setLoaded]=useState(false);
   const [password,setPassword]=useState('');
@@ -29,7 +29,7 @@ export function PasswordSetup() {
     if(new TextEncoder().encode(password).length>72){setError('Your password must be at most 72 UTF-8 bytes.');return;}
     setBusy(true);
     try {
-      const response=await fetch('/api/auth/setup-password',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Isave-Request':'1'},body:JSON.stringify({token,password})});
+      const response=await fetch(recovery?'/api/auth/reset-password':'/api/auth/setup-password',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Isave-Request':'1'},body:JSON.stringify({token,password})});
       if(response.status===204){setDone(true);setToken('');setPassword('');setConfirmation('');return;}
       const data=await response.json();setError(data.error??'Password setup could not be confirmed. Please try again or contact the office.');
     }catch{setError('Password setup could not be confirmed. Retry or contact the office.');}finally{setBusy(false);}

@@ -40,6 +40,24 @@ async function upstream(path: string, init: RequestInit = {}) {
   });
 }
 
+async function accountOperations(request: Request,url: URL) {
+  const path=url.pathname;
+  const allowed=/^\/api\/(?:notifications(?:\/[1-9][0-9]{0,9})?|admin\/(?:account-links\/[a-f0-9-]{36}\/replace|capabilities|staff(?:\/invitations|\/[1-9][0-9]{0,9}\/(?:invitation|status|permissions\/[a-z:-]+))?|notification-deliveries(?:\/[1-9][0-9]{0,9}\/retry)?))$/.test(path);
+  if(!allowed)return message('Not found.',404);
+  const expected=/\/(invitations|invitation|retry|replace)$/.test(path)?'POST':/\/(status|permissions\/[^/]+)$/.test(path)||/^\/api\/notifications\//.test(path)?'PUT':'GET';
+  if(request.method!==expected)return message('Method not allowed.',405);
+  const token=tokenFrom(request);if(!token)return expired(request);
+  if(expected!=='GET'&&(request.headers.get('origin')!==url.origin||request.headers.get('x-isave-request')!=='1'))return message('Reload and retry.',403);
+  for(const key of url.searchParams.keys())if(!['q','skip','limit'].includes(key)||url.searchParams.getAll(key).length!==1)return message('Unsupported parameters.',400);
+  const body=expected!=='GET'?await boundedBody(request,4096):undefined;
+  if(body===null)return message('Request too large.',413);
+  const endpoint=new URL('/api/v1'+path.slice(4),process.env['AUTH_API_ORIGIN']??'http://127.0.0.1:8000');endpoint.search=url.search;
+  const response=await fetch(endpoint,{method:expected,headers:{Authorization:`Bearer ${token}`,...(body!==undefined?{'Content-Type':'application/json'}:{})},...(body!==undefined?{body}:{}),cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
+  if(response.status===401)return expired(request);
+  if(!response.ok){const data=await response.json().catch(()=>({}));return message(typeof data.error?.message==='string'?data.error.message:'Unable to complete request. Refresh before retrying.',response.status);}
+  return Response.json(await response.json(),{headers});
+}
+
 async function adminRead(request: Request, url: URL) {
   if (request.method !== "GET") return message("Method not allowed.", 405);
   const target =
@@ -543,6 +561,7 @@ export async function handleAuthentication(request: Request): Promise<Response |
   const url = new URL(request.url);
   const path = url.pathname;
   if (
+    !path.startsWith("/api/notifications") &&
     !path.startsWith("/api/withdrawals") &&
     !path.startsWith("/api/financial/") &&
     !path.startsWith("/api/savings") &&
@@ -640,11 +659,13 @@ export async function handleAuthentication(request: Request): Promise<Response |
         [400, 429].includes(response.status) ? response.status : 503,
       );
     }
+    if (path.startsWith('/api/notifications') || /^\/api\/admin\/(staff|capabilities|notification-deliveries|account-links)(\/|$)/.test(path))
+      return await accountOperations(request,url);
     if (path.startsWith("/api/admin/") || path.startsWith("/api/review/"))
       return await adminRead(request, url);
     if (path.startsWith("/api/auth/")) {
       const action = path.slice("/api/auth/".length);
-      if (!["login", "me", "logout", "setup-password"].includes(action))
+      if (!["login", "me", "logout", "setup-password", "recovery", "reset-password"].includes(action))
         return message("Not found.", 404);
       if (request.method !== (action === "me" ? "GET" : "POST"))
         return message("Method not allowed.", 405);
@@ -654,7 +675,7 @@ export async function handleAuthentication(request: Request): Promise<Response |
           request.headers.get("x-isave-request") !== "1")
       )
         return message("Request could not be verified. Reload and try again.", 403);
-      if (action === "setup-password") {
+      if (["setup-password","recovery","reset-password"].includes(action)) {
         if (!request.headers.get("content-type")?.startsWith("application/json"))
           return message("Check your password and setup link.", 400);
         const body = await request.text();
@@ -665,12 +686,13 @@ export async function handleAuthentication(request: Request): Promise<Response |
         } catch {
           return message("Check your password and setup link.", 400);
         }
-        const response = await upstream("setup-password", {
+        const response = await upstream(action, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(input),
         });
         if (response.status === 204) return new Response(null, { status: 204, headers });
+        if(action==='recovery'&&response.status===202)return Response.json(await response.json(),{status:202,headers});
         return message(
           response.status === 400
             ? "Check your password (12 to 72 characters, at most 72 UTF-8 bytes). If the setup link is invalid or expired, contact the office."

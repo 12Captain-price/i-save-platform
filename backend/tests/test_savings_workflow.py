@@ -56,6 +56,8 @@ def test_pending_verified_reconciled_ledger_receipt_and_exact_retries(client,db,
     assert client.post(URL,headers=s['admin'],json=body).json()['id']==row['id']
     assert client.get(f"{URL}/{row['id']}/receipt",headers=s['own']).status_code==409
     assert savings.summary(db,s['member_id'])['confirmed']==[]
+    from app.models.account_workflows import Notification
+    assert db.query(Notification).filter(Notification.event_key.like('%:savings-event:%')).count()==0
     v=decision(row,'Verified');r=client.post(f"{URL}/{row['id']}/verify",headers=s['verifier'],json=v);assert r.status_code==200
     assert client.post(f"{URL}/{row['id']}/verify",headers=s['verifier'],json=v).status_code==200
     assert savings.summary(db,s['member_id'])['confirmed']==[]
@@ -63,6 +65,8 @@ def test_pending_verified_reconciled_ledger_receipt_and_exact_retries(client,db,
     for _ in range(2):assert client.post(f"{URL}/{row['id']}/reconcile",headers=s['reconciler'],json=reconcile).status_code==200
     assert db.query(SavingsLedgerEntry).count()==1 and db.query(SavingsEvent).count()==2
     assert savings.summary(db,s['member_id'])['confirmed']==[{'currency':'USD','amount':'10.00'}]
+    notices=db.query(Notification).filter(Notification.event_key.like('%:savings-event:%')).all()
+    assert len(notices)==1 and 'Confirmed' in notices[0].message
     receipt=client.get(f"{URL}/{row['id']}/receipt",headers=s['own']).json();assert receipt['contribution']['reference']==body['reference']
     overview=client.get('/api/v1/membership/overview',headers=s['own']).json();assert overview['savings']['confirmed']==[{'currency':'USD','amount':'10.00'}]
 

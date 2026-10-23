@@ -7,6 +7,10 @@ from app.config import get_settings
 from app.exceptions import APIError
 
 
+class DeliveryNotSubmitted(RuntimeError):
+    """Connection failed before any SMTP message submission; safe to retry."""
+
+
 class UnavailableMailer:
     available=False
     mode='unavailable'
@@ -45,6 +49,36 @@ class MailpitMailer:
             return message_id  # SMTP DATA was accepted; this is a correlation ID.
         finally:
             smtp.close()
+
+    def send_account(self, *, recipient, token, request_key, purpose, contacts=None):
+        page='recovery' if purpose=='recovery' else 'setup-password'
+        link=self.settings.password_setup_frontend_url.rstrip('/')+'/'+page+'#token='+token
+        self._capture(recipient,'i-Save '+('password recovery' if purpose=='recovery' else 'staff password setup'),
+            'Use this private, expiring, single-use link. Do not share it. No automatic login.\n'+link+self._contacts(contacts),
+            'account-'+str(UUID(request_key)))
+
+    def send_notice(self, *, recipient, notification_id, contacts=None):
+        self._capture(recipient,'i-Save account update',
+            'An update is available in your private notification centre. Log in through your usual i-Save address. No financial action is requested by this email.'+self._contacts(contacts),
+            'notice-'+str(notification_id))
+
+    @staticmethod
+    def _contacts(contacts):
+        return ('\n\nOffice: '+contacts['office']+'\nEmail: '+contacts['email']+'\nTelephone: '+contacts['office_phone']) if contacts else ''
+
+    def _capture(self, recipient, subject, body, identifier):
+        message=EmailMessage();message['From']=self.settings.smtp_from;message['To']=recipient
+        message['Subject']='[LOCAL TEST ONLY] '+subject
+        message['Message-ID']='<isave-'+identifier+'@local.test>'
+        message.set_content('Mailpit development capture only. Not external delivery.\n\n'+body)
+        smtp=smtplib.SMTP(timeout=self.settings.smtp_timeout_seconds)
+        try:
+            try:
+                smtp.connect(self.settings.smtp_host,self.settings.smtp_port)
+            except (OSError,smtplib.SMTPException):
+                raise DeliveryNotSubmitted('No SMTP message was submitted') from None
+            if smtp.send_message(message):raise RuntimeError('Recipient not accepted')
+        finally:smtp.close()
 
 
 def get_invitation_mailer():

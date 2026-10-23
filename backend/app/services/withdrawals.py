@@ -77,7 +77,10 @@ def audit(db,actor,row,action):
 def event(db,actor,row,action,body):
     e=Event(withdrawal_id=row.id,action=action,outcome=row.status,reason=body.reason,evidence_reference=body.evidence_reference,
         actor_id=actor.id,actor_email=actor.email,request_key=str(body.request_key),request_snapshot=snapshot(body))
-    db.add(e);db.flush();audit(db,actor,row,action);return e
+    db.add(e);db.flush();audit(db,actor,row,action)
+    from app.services.account_workflows import member_notice
+    member_notice(db,row.member_id,'withdrawal-event:'+str(e.id),'Withdrawal status: '+row.status+'. Approval and processing do not confirm payout; only Paid indicates verified payout.','withdrawals')
+    return e
 
 
 def request(db,actor,body):

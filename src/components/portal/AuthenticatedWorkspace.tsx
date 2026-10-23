@@ -17,12 +17,14 @@ import { SavingsWorkspace } from "./SavingsWorkspace";
 import { MemberOverview } from "./MemberOverview";
 import { MemberFees } from "./MembershipReview";
 import { ApplicationScreens } from "./ApplicationScreens";
+import {StaffAdministration,NotificationCentre,NotificationDelivery} from './AccountAdministration';
 import { AssistedRegistration } from "@/components/auth/AssistedRegistration";
 const supported: Record<Role, string[]> = {
-  member: ["withdrawals", "contributions", "dashboard", "fees", "plans", "applications"],
-  staff: ["withdrawals", "payments", "reports", "contributions", "dashboard", "registrations", "assist-registration", "plan-applications"],
-  finance: ["withdrawals", "reports", "contributions", "verification", "reconciliation", "ledger", "dashboard", "fees"],
+  member: ["notifications", "withdrawals", "contributions", "dashboard", "fees", "plans", "applications"],
+  staff: ["notifications", "withdrawals", "payments", "reports", "contributions", "dashboard", "registrations", "assist-registration", "plan-applications"],
+  finance: ["notifications", "withdrawals", "reports", "contributions", "verification", "reconciliation", "ledger", "dashboard", "fees"],
   admin: [
+    "staff", "roles", "notifications", "notification-deliveries",
     "withdrawals",
     "reports",
     "contributions",
@@ -37,6 +39,10 @@ const supported: Record<Role, string[]> = {
   ],
 };
 const descriptions: Record<string, string> = {
+  staff:'Invite and administer operational staff using existing security permissions.',
+  roles:'Inspect capabilities and assign individual operational access.',
+  notifications:'Private updates from completed application and financial events.',
+  'notification-deliveries':'Review local capture status without repeating business actions.',
   withdrawals: "Request eligible savings withdrawals and review manual payout evidence. Reservations and approvals are separate from verified payment.",
   applications:'Your recorded plan applications and enrolments, separate from membership registration and category interests.',
   contributions: "Record, verify and reconcile office contributions. Confirmed savings comes only from the ledger.",
@@ -311,7 +317,7 @@ export function AuthenticatedWorkspace({ role, screen }: { role: Role; screen: s
                 "This service is awaiting implementation. No simulated transactions are shown."}
             </p>
           </div>
-          {screen === "withdrawals" ? <Withdrawals member={role === "member"}/> : screen === "reports" && role !== "member" ? <FinancialReports/> : screen === "contributions" || (role === "finance" && ["verification","reconciliation","ledger"].includes(screen)) ? <SavingsWorkspace key={screen} member={role === "member"} initialStatus={screen === "verification" ? "Pending verification" : screen === "reconciliation" ? "Verified" : screen === "ledger" ? "Confirmed" : ""}/> : role === "staff" && screen === "payments" ? <SubscriptionPayments/> : (role === "staff" || role === "finance") && screen === "dashboard" ? (
+          {screen==='notifications'?<NotificationCentre/>:role==='admin'&&screen==='notification-deliveries'?<NotificationDelivery/>:role==='admin'&&['staff','roles'].includes(screen)?<StaffAdministration capabilitiesOnly={screen==='roles'}/>:screen === "withdrawals" ? <Withdrawals member={role === "member"}/> : screen === "reports" && role !== "member" ? <FinancialReports/> : screen === "contributions" || (role === "finance" && ["verification","reconciliation","ledger"].includes(screen)) ? <SavingsWorkspace key={screen} member={role === "member"} initialStatus={screen === "verification" ? "Pending verification" : screen === "reconciliation" ? "Verified" : screen === "ledger" ? "Confirmed" : ""}/> : role === "staff" && screen === "payments" ? <SubscriptionPayments/> : (role === "staff" || role === "finance") && screen === "dashboard" ? (
             <TaskHome role={role} />
           ) : (role === "admin" && screen === "finance") ||
             (role === "finance" && screen === "fees") ? (

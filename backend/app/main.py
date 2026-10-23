@@ -142,3 +142,5 @@ from app.routers.financial_operations import router as financial_operations_rout
 app.include_router(financial_operations_router)
 from app.routers.withdrawals import router as withdrawals_router
 app.include_router(withdrawals_router)
+from app.routers.account_workflows import router as account_workflows_router
+app.include_router(account_workflows_router)

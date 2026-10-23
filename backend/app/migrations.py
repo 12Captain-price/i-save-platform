@@ -21,10 +21,11 @@ import app.models  # noqa: F401
 
 
 INITIAL_REVISION = "0001_initial_schema"
-ADOPTION_HEAD = "0014_withdrawals"
+ADOPTION_HEAD = "0015_account_workflows"
 AUTH_TABLES = {"auth_sessions", "user_permissions", "login_throttles", "registration_submissions", "application_events", "savings_interests", "application_submissions", "application_registration_payments", "membership_approvals", "password_setup_invitations", "plan_drafts", "plan_draft_versions", "business_settings_versions", "business_settings_publications", "application_settings_snapshots", "subscription_settings_snapshots", "fee_rate_versions", "fee_rate_publications", "fee_obligations", "subscription_fee_payments"}
 AUTH_TABLES |= {'savings_contributions','savings_events','savings_ledger_entries'}
 AUTH_TABLES |= {'withdrawal_requests','withdrawal_events','withdrawal_payouts','withdrawal_debits'}
+AUTH_TABLES |= {'account_links','notifications','recovery_requests'}
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 AUTH_TABLES |= {'registration_evidence_profiles', 'application_evidence', 'evidence_reviews', 'plan_approvals', 'plan_publications', 'plan_applications', 'plan_enrolments', 'plan_application_events'}
 

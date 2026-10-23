@@ -10,7 +10,7 @@ from app.schemas.common import Email
 from app.schemas.user import UserOut
 from app.security.auth import current_session, current_user, now, permissions, digest, validate_session
 from app.services.auth import audit, login
-from app.services.auth import revoke_all, throttle
+from app.services.auth import revoke_all, throttle, revoke_setup_links
 from app.security.hashing import hash_password, verify_password
 
 router = APIRouter(prefix="/api/v1/auth", tags=["authentication"])
@@ -27,7 +27,12 @@ def setup_password(body:PasswordSetup,request:Request,db:Session=Depends(get_db)
     if get_settings().app_env.lower()=='production' and request.url.scheme!='https':raise APIError(400,'https_required','HTTPS is required')
     throttle(db,digest('password-setup-ip:'+(request.client.host if request.client else 'unknown')))
     throttle(db,digest('password-setup-token:'+body.token))
-    consume_invitation(db,body.token,body.password);db.commit()
+    from app.models.account_workflows import AccountLink
+    from app.services.account_workflows import consume
+    if db.get(AccountLink,digest(body.token)):
+        consume(db,body.token,body.password,'staff')
+    else:
+        consume_invitation(db,body.token,body.password);db.commit()
     return Response(status_code=204,headers={'Cache-Control':'no-store'})
 
 
@@ -90,6 +95,7 @@ def change_password(body: PasswordChange, user: User = Depends(current_user),
         raise APIError(400, "bad_request", "Password must be at most 72 UTF-8 bytes")
     user.password_hash = hash_password(body.new_password)
     revoke_all(db, user.id)
+    revoke_setup_links(db,user.id)
     audit(db, user, "password_changed_sessions_revoked")
     db.commit()
     return Response(status_code=204, headers={"Cache-Control": "no-store"})

@@ -1,5 +1,10 @@
 # Authentication and backend permissions
 
+Current extension: [staff administration, recovery and notifications](staff-administration.md)
+adds operational staff invitations, individual access controls and rate-limited
+recovery through the existing security permissions. The original checkpoints
+below are historical; external production delivery remains disabled.
+
 This milestone changes backend access only. The frontend design and labelled
 demo portals remain unchanged; demo accounts do not log into this API. No
 production deployment, account bootstrap or migration of the existing office

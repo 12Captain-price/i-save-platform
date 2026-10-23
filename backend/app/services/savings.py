@@ -40,6 +40,9 @@ def event(db, actor, row, action, body):
     e = Event(contribution_id=row.id, action=action, outcome=body.outcome, evidence_reference=body.evidence_reference,
         reason=body.reason, actor_id=actor.id, actor_email=actor.email, request_key=str(body.request_key), request_snapshot=snapshot(body))
     db.add(e); db.flush(); audit(db, actor, row, action)
+    if row.status in {'Confirmed','Rejected','Reversed'}:
+        from app.services.account_workflows import member_notice
+        member_notice(db,row.member_id,'savings-event:'+str(e.id),'Contribution status: '+row.status+'. See your contribution history for details.','contributions')
     return e
 
 

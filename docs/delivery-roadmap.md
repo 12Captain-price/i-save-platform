@@ -8,6 +8,12 @@ authentication; unconnected screens show unavailable states, without sample data
 
 ## Source material and decisions
 
+The staff administration, secure invitations/recovery and essential notification
+extension is documented in [staff administration](staff-administration.md),
+including current validation/activation gates and remaining delivery limitations.
+It preserves existing financial policies and permission grants; it does not
+enable production email, marketing or overdue reminders.
+
 Reviewed the uploaded Master Requirements & Development Roadmap v1.0,
 Web Application Requirements Specification v1.2, Hosting & Operating Cost
 Proposal v1.0, and the scanned flyer (OCR; confirm its wording before reuse).
