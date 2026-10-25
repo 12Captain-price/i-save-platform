@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.database import engine
 from app.migrations import require_current_schema
 from app.services.account_workflows import process_recovery
+from app.services.campaigns import process_one
 
 
 def main():
@@ -14,6 +15,8 @@ def main():
             with Session(engine) as db:
                 for _ in range(100):
                     if not process_recovery(db):break
+                for _ in range(10):
+                    if not process_one(db):break
         except Exception:
             # No raw SMTP/SQL exception text. Claimed jobs require replacement.
             print('Account-email batch stopped safely; inspect protected delivery status.')

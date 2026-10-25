@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = Field(default=30, ge=1, le=1440)
     password_setup_expire_minutes: int = Field(default=60,ge=5,le=1440)
     invitation_delivery: str = 'disabled'
+    campaign_delivery_enabled: bool = False
+    campaign_local_rate_per_minute: int = Field(default=10,ge=1,le=60)
     smtp_host: str = 'mailpit'
     smtp_port: int = Field(default=1025,ge=1,le=65535)
     smtp_from: str = 'isave-local@example.test'

@@ -62,6 +62,10 @@ class MailpitMailer:
             'An update is available in your private notification centre. Log in through your usual i-Save address. No financial action is requested by this email.'+self._contacts(contacts),
             'notice-'+str(notification_id))
 
+    def send_campaign(self, *, recipient,subject,message,public_url,unsubscribe_token,recipient_id,contacts=None):
+        link=self.settings.password_setup_frontend_url.rstrip('/')+'/unsubscribe#token='+unsubscribe_token
+        self._capture(recipient,subject,message+'\n\nRead the published information:\n'+public_url+'\n\nOptional announcement/event email. To stop these emails, open this private link and explicitly confirm:\n'+link+'\nOpening the link alone does not change preferences. Essential account and security messages are separate.'+self._contacts(contacts),'campaign-recipient-'+str(recipient_id))
+
     @staticmethod
     def _contacts(contacts):
         return ('\n\nOffice: '+contacts['office']+'\nEmail: '+contacts['email']+'\nTelephone: '+contacts['office_phone']) if contacts else ''

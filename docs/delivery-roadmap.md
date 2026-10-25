@@ -8,6 +8,13 @@ authentication; unconnected screens show unavailable states, without sample data
 
 ## Source material and decisions
 
+The [optional announcement/event campaign milestone](announcement-campaigns.md)
+adds explicit campaign approval/queueing, separate Member marketing consent,
+confirmed unsubscribe and a retry-safe local recipient outbox. Publication never
+sends automatically. Normal/production campaign sending stays disabled pending
+approved provider, sender, complaint/bounce and privacy operations. The report
+distinguishes isolated validation, normal migration preservation and operator UAT.
+
 The content management and owned member-support extension is documented in
 [content and support](content-support.md). It adds explicit editorial
 review/publication, separate scanned public media and immutable private support

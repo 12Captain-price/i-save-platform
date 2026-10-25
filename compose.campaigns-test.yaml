@@ -1,0 +1,64 @@
+# Standalone persistent synthetic environment. Never combine with normal Compose.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: isave_test_campaigns_rehearsal
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes: ['campaign_pg:/var/lib/postgresql/data']
+    healthcheck:
+      test: ['CMD','pg_isready','-U','postgres','-d','isave_test_campaigns_rehearsal']
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  mailpit:
+    image: axllent/mailpit:v1.31.6
+    environment:
+      MP_DATABASE: /data/mailpit.db
+    volumes: ['campaign_mail:/data']
+    ports: ['127.0.0.1:18025:8025','127.0.0.1:11025:1025']
+  backend:
+    build: ./backend
+    environment: &campaign_environment
+      DATABASE_URL: postgresql+psycopg://postgres@db:5432/isave_test_campaigns_rehearsal
+      ISAVE_TEST_DATABASE_URL: postgresql+psycopg://postgres@db:5432/isave_test_campaigns_regression
+      TEST_POSTGRES_URL: postgresql+psycopg://postgres@db:5432/postgres
+      APP_ENV: development
+      CAMPAIGN_DELIVERY_ENABLED: 'true'
+      INVITATION_DELIVERY: mailpit
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      PASSWORD_SETUP_FRONTEND_URL: http://127.0.0.1:13080
+    ports: ['127.0.0.1:18080:8000']
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD','python','-c',"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready')"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  account-worker:
+    build: ./backend
+    command: ['python','-m','app.account_worker']
+    environment: *campaign_environment
+    depends_on:
+      backend:
+        condition: service_healthy
+  frontend:
+    build: .
+    environment:
+      AUTH_API_ORIGIN: http://backend:8000
+      HOST: 0.0.0.0
+    ports: ['127.0.0.1:13080:3000']
+    depends_on:
+      backend:
+        condition: service_healthy
+volumes:
+  campaign_pg:
+    name: isave-campaigns-rehearsal-20261025-pg-8b4a1f3c
+  campaign_mail:
+    name: isave-campaigns-rehearsal-20261025-mail-8b4a1f3c
+networks:
+  default:
+    name: isave-campaigns-rehearsal-20261025-private

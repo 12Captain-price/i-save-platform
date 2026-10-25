@@ -146,3 +146,5 @@ from app.routers.account_workflows import router as account_workflows_router
 app.include_router(account_workflows_router)
 from app.routers.content_support import router as content_support_router
 app.include_router(content_support_router)
+from app.routers.campaigns import router as campaigns_router
+app.include_router(campaigns_router)

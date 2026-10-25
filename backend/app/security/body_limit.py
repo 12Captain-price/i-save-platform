@@ -7,14 +7,14 @@ class EvidenceBodyLimit:
 
     async def __call__(self, scope, receive, send):
         path=scope.get('path','')
-        if scope['type']!='http' or scope.get('method') not in {'POST','PUT'} or not any(path.startswith(p) for p in ['/api/v1/registration','/api/v1/application-documents','/api/v1/content','/api/v1/support']):
+        if scope['type']!='http' or scope.get('method') not in {'POST','PUT'} or not any(path.startswith(p) for p in ['/api/v1/registration','/api/v1/application-documents','/api/v1/content','/api/v1/support','/api/v1/campaigns','/api/v1/marketing','/api/v1/public/campaign-unsubscribe']):
             return await self.app(scope,receive,send)
         chunks=[];size=0
         while True:
             message=await receive()
             if message['type']=='http.disconnect':return
             size+=len(message.get('body',b''))
-            limit=4*1024*1024 if path=='/api/v1/content/media' else 65536 if path.startswith(('/api/v1/content','/api/v1/support')) else 9*1024*1024
+            limit=4*1024*1024 if path=='/api/v1/content/media' else 65536 if path.startswith(('/api/v1/content','/api/v1/support','/api/v1/campaigns','/api/v1/marketing','/api/v1/public/campaign-unsubscribe')) else 9*1024*1024
             if size>limit:
                 return await JSONResponse({'error':{'code':'body_too_large','message':'Upload request exceeds the size limit'}},status_code=413,headers={'Cache-Control':'no-store'})(scope,receive,send)
             chunks.append(message)

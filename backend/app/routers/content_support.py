@@ -116,3 +116,9 @@ def action(identifier:int,body:TicketAction,actor:User=Depends(current_user),ses
     cap='support:own' if actor.role and actor.role.name=='member' else 'support:'+{'reply':'reply','internal_note':'internal','assign':'assign','status':'resolve','reopen':'reply'}[body.action]
     lock_actor(db,actor,session,cap)
     result=service.ticket_action(db,actor,identifier,body);db.commit();return result
+
+@router.get('/public/content/{identifier}/{version}')
+def exact_public_content(identifier:int,version:int,db:Session=Depends(get_db)):
+    row=next((r for r in service.public_items(db) if r['item_id']==identifier and r['version']==version),None)
+    if not row:service.fail('This published version is unavailable',404)
+    return row

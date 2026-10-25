@@ -28,10 +28,12 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SetupPasswordRouteImport } from './routes/setup-password'
 import { Route as TeamRouteImport } from './routes/team'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as PlansSlugRouteImport } from './routes/plans/$slug'
 import { Route as PortalIndexRouteImport } from './routes/portal/index'
 import { Route as PortalRoleScreenRouteImport } from './routes/portal/$role/$screen'
+import { Route as UpdatesItemIdVersionRouteImport } from './routes/updates.$itemId.$version'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -128,6 +130,11 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UnsubscribeRoute = UnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VerifyRoute = VerifyRouteImport.update({
   id: '/verify',
   path: '/verify',
@@ -147,6 +154,11 @@ const PortalRoleScreenRoute = PortalRoleScreenRouteImport.update({
   id: '/$role/$screen',
   path: '/$role/$screen',
   getParentRoute: () => PortalRoute,
+} as any)
+const UpdatesItemIdVersionRoute = UpdatesItemIdVersionRouteImport.update({
+  id: '/updates/$itemId/$version',
+  path: '/updates/$itemId/$version',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -169,10 +181,12 @@ export interface FileRoutesByFullPath {
   '/setup-password': typeof SetupPasswordRoute
   '/team': typeof TeamRoute
   '/terms': typeof TermsRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/verify': typeof VerifyRoute
   '/plans/$slug': typeof PlansSlugRoute
   '/portal/': typeof PortalIndexRoute
   '/portal/$role/$screen': typeof PortalRoleScreenRoute
+  '/updates/$itemId/$version': typeof UpdatesItemIdVersionRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -193,10 +207,12 @@ export interface FileRoutesByTo {
   '/setup-password': typeof SetupPasswordRoute
   '/team': typeof TeamRoute
   '/terms': typeof TermsRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/verify': typeof VerifyRoute
   '/plans/$slug': typeof PlansSlugRoute
   '/portal': typeof PortalIndexRoute
   '/portal/$role/$screen': typeof PortalRoleScreenRoute
+  '/updates/$itemId/$version': typeof UpdatesItemIdVersionRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -219,10 +235,12 @@ export interface FileRoutesById {
   '/setup-password': typeof SetupPasswordRoute
   '/team': typeof TeamRoute
   '/terms': typeof TermsRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/verify': typeof VerifyRoute
   '/plans/$slug': typeof PlansSlugRoute
   '/portal/': typeof PortalIndexRoute
   '/portal/$role/$screen': typeof PortalRoleScreenRoute
+  '/updates/$itemId/$version': typeof UpdatesItemIdVersionRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -246,10 +264,12 @@ export interface FileRouteTypes {
     | '/setup-password'
     | '/team'
     | '/terms'
+    | '/unsubscribe'
     | '/verify'
     | '/plans/$slug'
     | '/portal/'
     | '/portal/$role/$screen'
+    | '/updates/$itemId/$version'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -270,10 +290,12 @@ export interface FileRouteTypes {
     | '/setup-password'
     | '/team'
     | '/terms'
+    | '/unsubscribe'
     | '/verify'
     | '/plans/$slug'
     | '/portal'
     | '/portal/$role/$screen'
+    | '/updates/$itemId/$version'
   id:
     | '__root__'
     | '/'
@@ -295,10 +317,12 @@ export interface FileRouteTypes {
     | '/setup-password'
     | '/team'
     | '/terms'
+    | '/unsubscribe'
     | '/verify'
     | '/plans/$slug'
     | '/portal/'
     | '/portal/$role/$screen'
+    | '/updates/$itemId/$version'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -321,7 +345,9 @@ export interface RootRouteChildren {
   SetupPasswordRoute: typeof SetupPasswordRoute
   TeamRoute: typeof TeamRoute
   TermsRoute: typeof TermsRoute
+  UnsubscribeRoute: typeof UnsubscribeRoute
   VerifyRoute: typeof VerifyRoute
+  UpdatesItemIdVersionRoute: typeof UpdatesItemIdVersionRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -459,6 +485,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/unsubscribe': {
+      id: '/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/unsubscribe'
+      preLoaderRoute: typeof UnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/verify': {
       id: '/verify'
       path: '/verify'
@@ -486,6 +519,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/portal/$role/$screen'
       preLoaderRoute: typeof PortalRoleScreenRouteImport
       parentRoute: typeof PortalRoute
+    }
+    '/updates/$itemId/$version': {
+      id: '/updates/$itemId/$version'
+      path: '/updates/$itemId/$version'
+      fullPath: '/updates/$itemId/$version'
+      preLoaderRoute: typeof UpdatesItemIdVersionRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -533,7 +573,9 @@ const rootRouteChildren: RootRouteChildren = {
   SetupPasswordRoute: SetupPasswordRoute,
   TeamRoute: TeamRoute,
   TermsRoute: TermsRoute,
+  UnsubscribeRoute: UnsubscribeRoute,
   VerifyRoute: VerifyRoute,
+  UpdatesItemIdVersionRoute: UpdatesItemIdVersionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -6,11 +6,14 @@ import { contentSupportApi, harareDate, type PublicContent } from "@/lib/content
 export function ContentCard({
   item,
   protectedMedia = false,
+  headingLevel = "h2",
 }: {
   item: PublicContent;
   protectedMedia?: boolean;
+  headingLevel?: "h1" | "h2";
 }) {
   const f = item.fields;
+  const Heading = headingLevel;
   const body = (
     <>
       <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-muted-foreground">
@@ -36,7 +39,7 @@ export function ContentCard({
     );
   return (
     <article className="rounded-xl border border-border bg-card p-6">
-      <h2 className="break-words text-xl font-semibold">{f.title}</h2>
+      <Heading className="break-words text-xl font-semibold">{f.title}</Heading>
       {f.team_role && <p className="mt-2 text-primary">{f.team_role}</p>}
       {item.kind === "event" && (
         <dl className="mt-3 space-y-2 text-sm">

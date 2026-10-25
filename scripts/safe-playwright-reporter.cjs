@@ -1,7 +1,7 @@
 // Failure diagnostics must never emit cookies, bearer tokens or setup URLs.
 function safe(value = "") {
   return value
-    .replace(/https?:\/\/[^\s"']*(?:setup-password|recovery)#[^\s"']*/gi, "[private account URL redacted]")
+    .replace(/https?:\/\/[^\s"']*(?:setup-password|recovery|unsubscribe)#[^\s"']*/gi, "[private action URL redacted]")
     .replace(/#token=[A-Za-z0-9_-]+/g, "#token=[redacted]")
     .replace(/(?:cookie|authorization):[^\r\n]*/gi, "[private header redacted]")
     .replace(/isave_session=[^\s;"']+/g, "isave_session=[redacted]")
