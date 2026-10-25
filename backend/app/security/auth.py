@@ -29,6 +29,8 @@ PERMISSIONS |= {'content:'+c for c in ['read','draft','review','publish','archiv
 PERMISSIONS |= {'support:'+c for c in ['own','read','reply','internal','assign','resolve']}
 PERMISSIONS |= {'campaigns:'+c for c in ['read','prepare','approve','send','recipients']}
 PERMISSIONS.add('marketing:own')
+OPERATIONS_PERMISSIONS = {'operations:read','retention:draft','retention:publish','retention:hold','retention:execute','backups:run','backups:restore-test'}
+PERMISSIONS |= OPERATIONS_PERMISSIONS
 PERMISSIONS |= {"plans:drafts:read", "plans:drafts:write", "settings:read", "settings:write", "settings:publish"}
 from app.membership_policy import CAPABILITIES
 PERMISSIONS |= CAPABILITIES
@@ -100,6 +102,7 @@ def permissions(db, user):
         codes.discard('savings:own')
     # Security administration is never delegable to non-administrator roles.
     if not user.role or user.role.name != "administrator":
+        codes -= OPERATIONS_PERMISSIONS
         codes -= {'plans:approve', 'plans:publish'}
         codes -= SECURITY_PERMISSIONS
         codes -= {"plans:drafts:read", "plans:drafts:write", "settings:read", "settings:write", "settings:publish"}

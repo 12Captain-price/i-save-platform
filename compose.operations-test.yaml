@@ -1,0 +1,87 @@
+# Standalone persistent synthetic environment. Never combine with normal Compose.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: isave_test_operations_rehearsal
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes: [operations_pg:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD, pg_isready, -U, postgres, -d, isave_test_operations_rehearsal]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  restore-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes: [operations_restore:/var/lib/postgresql/data]
+    networks: [recovery]
+  scanner:
+    image: clamav/clamav:1.4@sha256:3bba6dd5ac6663d55b80f86a3126e146612d93b593cc2617188d13f637d91260
+    volumes: [operations_signatures:/var/lib/clamav]
+    networks: [scan]
+    # No host ports. Freshclam requires outbound access for signed updates.
+  backend:
+    build: ./backend
+    environment: &operations_environment
+      DATABASE_URL: postgresql+psycopg://postgres@db:5432/isave_test_operations_rehearsal
+      ISAVE_TEST_DATABASE_URL: postgresql+psycopg://postgres@db:5432/isave_test_operations_regression
+      TEST_POSTGRES_URL: postgresql+psycopg://postgres@db:5432/postgres
+      APP_ENV: test
+      DOCUMENT_SCAN_HOST: scanner
+      DOCUMENT_SCAN_TEST_ONLY: 'false'
+      DOCUMENT_SCAN_MAX_AGE_HOURS: 48
+      INVITATION_DELIVERY: disabled
+      CAMPAIGN_DELIVERY_ENABLED: 'false'
+    ports: ['127.0.0.1:18090:8000']
+    networks: [default, scan]
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready')"]
+      interval: 3s
+      timeout: 2s
+      retries: 30
+  operations-worker:
+    shm_size: 512m
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.operations
+    environment:
+      <<: *operations_environment
+      BACKUP_DIRECTORY: /var/lib/isave-backups
+      BACKUP_KEY_FILE: /run/secrets/backup_key
+      RESTORE_TEST_URL: postgresql+psycopg://postgres@restore-db:5432/postgres
+    volumes: [operations_backups:/var/lib/isave-backups]
+    secrets: [backup_key]
+    networks: [default, recovery]
+    depends_on:
+      backend:
+        condition: service_healthy
+  frontend:
+    build: .
+    environment:
+      AUTH_API_ORIGIN: http://backend:8000
+      HOST: 0.0.0.0
+    ports: ['127.0.0.1:13090:3000']
+    depends_on:
+      backend:
+        condition: service_healthy
+secrets:
+  backup_key:
+    file: ${OPERATIONS_TEST_KEY_FILE:?Private rehearsal key file required}
+networks:
+  scan: {}
+  recovery:
+    internal: true
+volumes:
+  operations_pg:
+    name: isave-operations-rehearsal-20261025-pg-64f09ab2
+  operations_restore:
+    name: isave-operations-rehearsal-20261025-restore-64f09ab2
+  operations_backups:
+    name: isave-operations-rehearsal-20261025-backups-64f09ab2
+  operations_signatures:
+    name: isave-operations-rehearsal-20261025-signatures-64f09ab2

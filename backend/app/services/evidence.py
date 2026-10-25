@@ -32,7 +32,8 @@ def test_scanner_allowed():
 
 
 def scan_available():
-    return bool(get_settings().document_scan_host or test_scanner_allowed())
+    from app.services.scanner import status
+    return status()['available']
 
 
 def scan(data):
@@ -43,28 +44,8 @@ def scan(data):
         return 'Synthetic isolated test scanner — not production malware validation'
     if not s.document_scan_host:
         raise APIError(503, 'scanner_unavailable', 'Private upload scanning is unavailable. Contact the office; do not email documents.')
-    try:
-        with socket.create_connection((s.document_scan_host, s.document_scan_port), timeout=5) as sock:
-            sock.sendall(b'zVERSION\0')
-            version = sock.recv(1024).decode('ascii', errors='strict').strip('\0\n')
-        # Refuse an uninitialised/stale signature database; no silent scan bypass.
-        signature_date = datetime.strptime(version.rsplit('/', 1)[-1].strip(), '%a %b %d %H:%M:%S %Y').replace(tzinfo=timezone.utc)
-        if not timedelta(0) <= now() - signature_date <= timedelta(days=7):
-            raise ValueError('Scanner signatures not current')
-        with socket.create_connection((s.document_scan_host, s.document_scan_port), timeout=10) as sock:
-            sock.sendall(b'zINSTREAM\0')
-            for offset in range(0, len(data), 65536):
-                chunk = data[offset:offset+65536]
-                sock.sendall(struct.pack('!I', len(chunk)) + chunk)
-            sock.sendall(struct.pack('!I', 0))
-            response = sock.recv(4096)
-        if response.strip(b'\0\n') != b'stream: OK':
-            raise APIError(400, 'unsafe_file', 'The file could not be accepted')
-        return version[:100]
-    except APIError:
-        raise
-    except Exception:
-        raise APIError(503, 'scanner_unavailable', 'Private upload scanning is unavailable. Retry later or contact the office.') from None
+    from app.services.scanner import scan as clamav_scan
+    return clamav_scan(data)
 
 
 def validate_upload(upload):
@@ -164,14 +145,14 @@ def detail(db, application_id):
         history = db.query(Review).filter_by(evidence_id=row.id).order_by(Review.id).all()
         items.append({'id':row.id, 'kind':row.kind, 'content_type':row.content_type, 'size':len(row.content),
             'recorded_at':row.recorded_at, 'submitted_by':row.actor_email, 'replaces_id':row.replaces_id,
-            'superseded':row.id in replaced, 'status':history[-1].outcome if history else 'Awaiting review',
+            'superseded':row.id in replaced, 'status':('Removed under retention policy' if not row.content else history[-1].outcome if history else 'Awaiting review'),
             'history':[{'id':r.id,'outcome':r.outcome,'reason':r.reason,'reviewer':r.actor_email,'recorded_at':r.recorded_at} for r in history]})
     return {'national_id':profile.national_id if profile else None, 'income_source':profile.income_source if profile else None,
         'requirements':json.loads(profile.requirements_snapshot) if profile else None,
         'consent':None if not profile else {'text':profile.consent_text,'version':profile.consent_version,'at':profile.consent_at},
         'items':items,'missing':[kind for kind in ('residence','self_employed' if profile and profile.income_source=='self_employed' else 'income') if not any(r['kind']==kind and not r['superseded'] for r in items)],
         'approval_blockers':approval_blockers(db,application_id),
-        'retention_notice':'Retention period is not configured. Production privacy, encrypted backup and retention operations require approval.' if not profile or not json.loads(profile.requirements_snapshot).get('document_retention_days') else 'Recorded retention policy only; automatic deletion is not implemented.'}
+        'retention_notice':'Application collection retention period is not configured. Production privacy and retention operations require approval.' if not profile or not json.loads(profile.requirements_snapshot).get('document_retention_days') else 'Recorded application collection policy is preserved. Scoped operational retention is managed separately in Documents & recovery; normal erasure is disabled.'}
 
 
 def review(db, actor, application_id, evidence_id, body):

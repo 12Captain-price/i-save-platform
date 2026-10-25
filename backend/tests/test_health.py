@@ -12,7 +12,8 @@ def test_health_ok():
     body = response.json()
     assert body["status"] == "ok"
     assert body["service"] == "i-Save Backend"
-    assert body["env"] == "development"
+    from app.config import get_settings
+    assert body["env"] == get_settings().app_env
 
 
 def test_health_content_type():

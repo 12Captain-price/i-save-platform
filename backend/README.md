@@ -1,5 +1,11 @@
 # i-Save Backend (Phase 1: Foundation)
 
+Private ClamAV, scoped retention/legal holds and encrypted database/document
+backups with isolated restore checks are documented in
+[private document operations](../docs/private-document-operations.md). Normal
+retention execution and live restore remain disabled; infrastructure keys stay
+outside application settings and source code.
+
 Opt-in development invitation capture is documented in
 [local Mailpit testing](../docs/local-invitation-email.md). Production sending
 remains disabled; no migration is required for the SMTP adapter.

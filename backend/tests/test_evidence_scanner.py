@@ -15,6 +15,7 @@ def test_clamd_protocol_requires_fresh_signatures_and_clean_result(monkeypatch,r
         def __enter__(self):return self
         def __exit__(self,*args):pass
         def sendall(self,data):sent.append(data)
+        def settimeout(self,value):pass
         def recv(self,size):return self.response
     def connect(*args,**kw):
         connections.append(1);return Socket(version if len(connections)==1 else result)

@@ -73,7 +73,7 @@ def history(actor=Depends(access('settings:read')), db:Session=Depends(get_db)):
     return {'active_version':current, 'active_terms':terms, 'head_version':latest_id(db),
         'versions':[presented(v) for v in versions],
         'publications':[{'version':p.version_id,'effective_at':p.effective_at,'actor_email':p.actor_email,'recorded_at':p.recorded_at} for p in publications],
-        'impacts':IMPACTS, 'unsupported':['External payout provider transfers','Withdrawal debit reversals / post-payment balance restoration','Refunds','Returns','Penalties','Host scheduler installation','Automatic document deletion / retention enforcement','Additional eligibility rules','SMTP credentials and infrastructure'],
+        'impacts':IMPACTS, 'unsupported':['External payout provider transfers','Withdrawal debit reversals / post-payment balance restoration','Refunds','Returns','Penalties','Host scheduler installation','Normal retention deletion (scoped synthetic controls are in Documents & recovery)','Additional eligibility rules','SMTP credentials and infrastructure'],
         'preview':None if not versions else {'version':versions[0].id, 'blockers':blockers(db,versions[0]),
             'changes':{k:{'from':terms[k],'to':v} for k,v in json.loads(versions[0].snapshot).items() if v!=terms[k]}}}
 

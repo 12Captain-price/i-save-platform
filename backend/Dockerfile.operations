@@ -1,0 +1,12 @@
+FROM postgres:16-bookworm
+RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv && rm -rf /var/lib/apt/lists/*
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH" PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+WORKDIR /app/backend
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY app ./app
+COPY alembic ./alembic
+COPY alembic.ini ./
+ENTRYPOINT []
+CMD ["python", "-m", "app.operations_worker"]

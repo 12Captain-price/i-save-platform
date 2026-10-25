@@ -28,7 +28,7 @@ export const settingLabels = {
   require_evidence_acceptance:
     "Require acceptance of all submitted current evidence before approval",
   document_retention_days:
-    "Document retention policy in days (optional; deletion is not automated)",
+    "Application collection retention period (legacy snapshot; normal deletion disabled)",
 };
 type Key = keyof typeof settingLabels;
 type Terms = Record<Key, string | number | boolean | null>;

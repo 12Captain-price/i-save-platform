@@ -8,6 +8,15 @@ authentication; unconnected screens show unavailable states, without sample data
 
 ## Source material and decisions
 
+The [private document and recovery operations milestone](private-document-operations.md)
+adds private real ClamAV with current-signature fail-closed intake, separately
+versioned scoped retention/legal holds, encrypted consistent database/document
+archives, scheduled/manual jobs and independent restore verification. Normal
+retention periods and scheduling remain unset; destructive execution is restricted
+to synthetic databases. Off-site storage, production disposal/retention approvals,
+key escrow and recovery objectives remain operational dependencies. See the
+consolidated report for exact regression and activation evidence.
+
 The [optional announcement/event campaign milestone](announcement-campaigns.md)
 adds explicit campaign approval/queueing, separate Member marketing consent,
 confirmed unsubscribe and a retry-safe local recipient outbox. Publication never
@@ -59,7 +68,7 @@ stabilisation milestone. No production deployment or paid services are requested
 | 3. Registration and plan workflows | Persisted pending public applications, duplicate/privacy protection, Staff/Admin search/pagination and recorded status history. Dedicated payment recording/verification and membership approval/activation with US$20 fee gate; next-month US$5 subscription, due day unset. See [membership workflow](membership-activation.md). Plan terms/history/scheduling remain outstanding | Fee verified separately from savings; account activation distinct from plan approval; approved plan terms snapshotted; rejected requests retained; approval never changes balances |
 | 3. Financial integrity | Decimal fields and pending-only exclusion exist. API approval/reversal workflows now return unconfigured; underlying legacy services still need immutable reversal and transactional verification work. Contribution actors come from sessions; totals still mix currencies | Immutable linked ledger entries; transactional verification; idempotency and concurrency tests; authenticated actors; currency-specific totals; fee/subscription separation; duplicate/rejected/reversed flows and reconciliation agree with ledger |
 | 4. Communications and administration | Browser login/logout is connected; role workspaces are protected and unconnected business screens show unavailable states | In-app notifications, provider-backed email, receipts, support tickets, content approval/versioning, consent-aware campaigns, safe retries, reports/exports, append-only audit and individual permissions |
-| 4. Backup and recovery | Local PostgreSQL dump/restore drill is part of Phase 1; production backup centre is still outstanding | Approved recovery point/time targets and retention; encrypted separate storage; schedules/manual backups; verification, access control, failure alerts and regular restore drills |
+| 4. Backup and recovery | Private scanner and Admin operational centre implemented: encrypted consistent PostgreSQL/document archives, scoped retention previews/holds and isolated restore checks. Normal retention execution is disabled; off-site protection is unconfigured. See [operations](private-document-operations.md) for activation evidence | Approved recovery point/time targets, disposal/retention, key escrow and independent off-site storage; monitored scheduling and regular restore drills |
 | 5. Staging and rollout | No production readiness established | Full browser/API UAT, security review, load tests, HTTPS/secret configuration, monitored staging, rollback, privacy/legal review, staff training, organisational go-live approval |
 
 The [savings contributions and reconciliation milestone](savings-contributions.md) adds pending office recording, separate verification/reconciliation, append-only currency ledgers, linked reversals, owned history and ledger-backed summaries. Its consolidated report records validation, preservation and activation status; it does not approve unresolved policy or production operation.
@@ -122,9 +131,10 @@ The combined [registration-documents and plan-enrolment milestone](registration-
    Add notifications, receipts, approved content, support, permission-scoped
    reporting and audit search. Choose email/storage providers before delivery
    integrations; marketing needs consent and unsubscribe handling.
-9. Build backup orchestration and monitoring after recovery targets, storage
-   ownership, retention and key management are agreed. Test restoration into
-   a separate environment before live financial records.
+9. Local backup orchestration, failure status and isolated restore verification
+   are implemented in [private document operations](private-document-operations.md).
+   Agree recovery objectives, storage ownership, key escrow and off-site storage;
+   review production disposal/retention before enabling destructive operations.
 10. Validate staging against the documents' complete acceptance criteria,
     including member isolation, financial corrections, duplicate requests,
     reconciled reports, operational failures and restore drills. Record owner

@@ -104,6 +104,8 @@ async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError) -> JS
 # API routers. Each router carries its own path prefix; health is at /health,
 # entity routers are mounted under /api/v1 via their router prefixes.
 app.include_router(health_router)
+from app.routers.operations import router as operations_router
+app.include_router(operations_router)
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(registration_router)

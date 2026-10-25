@@ -1,5 +1,12 @@
 # Database stabilisation and recovery
 
+For real scanning, scoped retention/legal holds, encrypted database/document
+archives and independent restore jobs, follow
+[private document operations](private-document-operations.md). Private evidence
+bytes live inside PostgreSQL and are included in a consistent dump. Earlier
+unencrypted dump examples below remain manual recovery tools, not evidence of
+encrypted off-site protection. Normal erasure and live restore remain disabled.
+
 Run commands from the repository root unless stated otherwise. Use synthetic
 data for development. Never delete an existing Docker volume to fix migration
 tracking. This runbook does not perform a production deployment.

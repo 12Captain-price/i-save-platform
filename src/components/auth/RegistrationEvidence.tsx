@@ -157,7 +157,7 @@ export function RegistrationEvidence({ disabled = false }: { disabled?: boolean 
           <p className="text-xs text-muted-foreground">
             {r.document_retention_days === null
               ? "A retention period has not been approved; production retention and privacy operations remain outstanding."
-              : `Recorded retention policy: ${r.document_retention_days} days. Automated deletion is not implemented.`}
+              : `Recorded application collection policy: ${r.document_retention_days} days. Normal document deletion remains disabled; scoped operational retention is managed separately.`}
           </p>
         </>
       )}

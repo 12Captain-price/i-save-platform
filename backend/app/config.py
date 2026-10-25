@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     document_scan_host: str = ''
     document_scan_port: int = Field(default=3310, ge=1, le=65535)
     document_scan_test_only: bool = False
+    document_scan_timeout_seconds: int = Field(default=15, ge=1, le=30)
+    document_scan_max_age_hours: int = Field(default=48, ge=1, le=168)
+    backup_directory: str = '/var/lib/isave-backups'
+    backup_key_file: str = '/run/secrets/backup_key'
+    restore_test_url: str = ''
+    backup_max_bytes: int = Field(default=268435456, ge=1048576, le=1073741824)
 
     database_url: str = "sqlite:///./data/i_save_dev.db"
 

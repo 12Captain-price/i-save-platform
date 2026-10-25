@@ -1,0 +1,61 @@
+# Optional normal private scanner + recovery worker. No host scanner/restore ports.
+# Requires private key and restore credentials configured outside the repository.
+services:
+  scanner:
+    image: clamav/clamav:1.4@sha256:3bba6dd5ac6663d55b80f86a3126e146612d93b593cc2617188d13f637d91260
+    restart: unless-stopped
+    volumes: [scanner_signatures:/var/lib/clamav]
+    networks: [private_scan]
+  backend:
+    environment:
+      DOCUMENT_SCAN_HOST: scanner
+      DOCUMENT_SCAN_MAX_AGE_HOURS: 48
+      DOCUMENT_SCAN_TEST_ONLY: 'false'
+    networks: [default, private_scan]
+  operations-worker:
+    shm_size: 512m
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.operations
+    command: [python, -m, app.operations_worker]
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://isave_user:isave_password_change_me@db:5432/isave}
+      APP_ENV: ${APP_ENV:-development}
+      BACKUP_DIRECTORY: /var/lib/isave-backups
+      BACKUP_KEY_FILE: /run/secrets/backup_key
+      RESTORE_TEST_URL: ${RESTORE_TEST_URL:-}
+    secrets: [backup_key]
+    volumes: [encrypted_backups:/var/lib/isave-backups]
+    networks: [default, private_recovery]
+  restore-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: recovery_operator
+      POSTGRES_PASSWORD_FILE: /run/secrets/restore_password
+    secrets: [restore_password]
+    volumes: [restore_pg:/var/lib/postgresql/data]
+    networks: [private_recovery]
+secrets:
+  backup_key:
+    file: ${BACKUP_KEY_FILE_HOST:?Private backup key file required}
+  restore_password:
+    file: ${RESTORE_PASSWORD_FILE_HOST:?Private restore password file required}
+networks:
+  private_scan:
+    ipam:
+      config:
+        - subnet: ${PRIVATE_SCAN_SUBNET:-10.254.81.0/24}
+  private_recovery:
+    internal: true
+    ipam:
+      config:
+        - subnet: ${PRIVATE_RECOVERY_SUBNET:-10.254.82.0/24}
+volumes:
+  scanner_signatures:
+    name: i_save_private_scanner_signatures
+  encrypted_backups:
+    name: i_save_encrypted_backups
+  restore_pg:
+    name: i_save_independent_recovery_pg

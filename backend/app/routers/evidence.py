@@ -36,6 +36,7 @@ def detail(application_id:int, actor=Depends(require('documents:view')), db:Sess
 def download(application_id:int, evidence_id:int, actor=Depends(protected('documents:view')), db:Session=Depends(get_db)):
     row = db.get(ApplicationEvidence,evidence_id)
     if not row or row.application_id != application_id:raise APIError(404,'not_found','Evidence not found')
+    if not row.content:raise APIError(410,'retained_metadata','Document bytes were removed by an authorised retention operation; review history is retained')
     from app.models.audit_event import AuditEvent
     db.add(AuditEvent(event_type='documents',actor_user_id=actor.id,actor_email=actor.email,action='evidence_downloaded',target_table='application_evidence',target_id=str(row.id)))
     commit(db)

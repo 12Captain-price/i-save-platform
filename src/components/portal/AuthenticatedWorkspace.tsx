@@ -1,4 +1,5 @@
 import {Campaigns,MarketingPreferences} from './Campaigns';
+import {DocumentOperations} from './DocumentOperations';
 import {ContentManagement} from './ContentManagement';
 import {SupportCentre} from './SupportCentre';
 ﻿import { Link, Navigate } from "@tanstack/react-router";
@@ -26,7 +27,7 @@ const supported: Record<Role, string[]> = {
   member: ["email-preferences", "support", "notifications", "withdrawals", "contributions", "dashboard", "fees", "plans", "applications"],
   staff: ["campaigns", "support", "cms", "announcements", "notifications", "withdrawals", "payments", "reports", "contributions", "dashboard", "registrations", "assist-registration", "plan-applications"],
   finance: ["notifications", "withdrawals", "reports", "contributions", "verification", "reconciliation", "ledger", "dashboard", "fees"],
-  admin: ["campaigns", "support", "cms", "announcements",
+  admin: ["operations", "campaigns", "support", "cms", "announcements",
     "staff", "roles", "notifications", "notification-deliveries",
     "withdrawals",
     "reports",
@@ -325,7 +326,7 @@ export function AuthenticatedWorkspace({ role, screen }: { role: Role; screen: s
                 "This service is awaiting implementation. No simulated transactions are shown."}
             </p>
           </div>
-          {screen==='email-preferences'&&role==='member'?<MarketingPreferences/>:screen==='campaigns'&&(role==='admin'||role==='staff')?<Campaigns/>:screen==='support'?<SupportCentre member={role==='member'}/>:(['cms','announcements'].includes(screen)&&(role==='admin'||role==='staff'))?<ContentManagement/>:screen==='notifications'?<NotificationCentre/>:role==='admin'&&screen==='notification-deliveries'?<NotificationDelivery/>:role==='admin'&&['staff','roles'].includes(screen)?<StaffAdministration capabilitiesOnly={screen==='roles'}/>:screen === "withdrawals" ? <Withdrawals member={role === "member"}/> : screen === "reports" && role !== "member" ? <FinancialReports/> : screen === "contributions" || (role === "finance" && ["verification","reconciliation","ledger"].includes(screen)) ? <SavingsWorkspace key={screen} member={role === "member"} initialStatus={screen === "verification" ? "Pending verification" : screen === "reconciliation" ? "Verified" : screen === "ledger" ? "Confirmed" : ""}/> : role === "staff" && screen === "payments" ? <SubscriptionPayments/> : (role === "staff" || role === "finance") && screen === "dashboard" ? (
+          {screen==='operations'&&role==='admin'?<DocumentOperations/>:screen==='email-preferences'&&role==='member'?<MarketingPreferences/>:screen==='campaigns'&&(role==='admin'||role==='staff')?<Campaigns/>:screen==='support'?<SupportCentre member={role==='member'}/>:(['cms','announcements'].includes(screen)&&(role==='admin'||role==='staff'))?<ContentManagement/>:screen==='notifications'?<NotificationCentre/>:role==='admin'&&screen==='notification-deliveries'?<NotificationDelivery/>:role==='admin'&&['staff','roles'].includes(screen)?<StaffAdministration capabilitiesOnly={screen==='roles'}/>:screen === "withdrawals" ? <Withdrawals member={role === "member"}/> : screen === "reports" && role !== "member" ? <FinancialReports/> : screen === "contributions" || (role === "finance" && ["verification","reconciliation","ledger"].includes(screen)) ? <SavingsWorkspace key={screen} member={role === "member"} initialStatus={screen === "verification" ? "Pending verification" : screen === "reconciliation" ? "Verified" : screen === "ledger" ? "Confirmed" : ""}/> : role === "staff" && screen === "payments" ? <SubscriptionPayments/> : (role === "staff" || role === "finance") && screen === "dashboard" ? (
             <TaskHome role={role} />
           ) : (role === "admin" && screen === "finance") ||
             (role === "finance" && screen === "fees") ? (
