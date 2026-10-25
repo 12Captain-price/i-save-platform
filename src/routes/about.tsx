@@ -1,3 +1,4 @@
+import {PublishedContent} from '@/components/site/PublishedContent';
 ﻿import { createFileRoute, Link } from "@tanstack/react-router";
 import { PublicLayout } from "@/components/site/PublicLayout";
 import { PageIntro } from "@/components/site/SiteSections";
@@ -17,24 +18,7 @@ function About() {
             information.
           </p>
         </PageIntro>
-        <div className="grid gap-5 md:grid-cols-2">
-          <section className="rounded-xl border border-border bg-card p-6">
-            <h2 className="text-xl font-semibold">Office support, online access</h2>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              Authorised staff review applications and record office payments. Members can check
-              their own membership status, fee records, subscriptions and category interests after
-              activation.
-            </p>
-          </section>
-          <section className="rounded-xl border border-border bg-card p-6">
-            <h2 className="text-xl font-semibold">Know what is available</h2>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              Savings-plan enrolment, reliable savings summaries and several account services are
-              not connected yet. The site labels unavailable functionality rather than displaying
-              example balances or promising returns.
-            </p>
-          </section>
-        </div>
+        <PublishedContent kind="organisation" emptyTitle="Organisation information is awaiting publication"/>
         <div className="mt-6 flex flex-wrap gap-3">
           <Button asChild>
             <Link to="/how-it-works">Understand the process</Link>

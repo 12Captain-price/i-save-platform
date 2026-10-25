@@ -72,6 +72,7 @@ def private_routes():
                 continue
             if path in {"/api/v1/auth/recovery", "/api/v1/auth/reset-password", "/api/v1/registration", "/api/v1/auth/setup-password", "/api/v1/public/contacts", "/api/v1/public/registration-requirements", "/api/v1/public/plan-offers"}:
                 continue
+            if path.startswith('/api/v1/public/content'):continue
             if method == "get" and path.startswith("/api/v1/plans"):
                 continue
             yield method, re.sub(r"\{[^}]+\}", "1", path)

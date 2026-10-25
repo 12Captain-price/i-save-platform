@@ -134,6 +134,9 @@ def reset(body:PasswordSetup,request:Request,db:Session=Depends(get_db)):
 
 def available_link(db,user,row):
     codes=permissions(db,user)
+    role={'administrator':'admin','staff':'staff','member':'member'}.get(user.role.name if user.role else '')
+    if row.screen=='support' and role and ('support:own' in codes if role=='member' else 'support:read' in codes):return '/portal/'+role+'/support'
+    if row.screen=='cms' and role in {'admin','staff'} and 'content:read' in codes:return '/portal/'+role+'/cms'
     required={'contributions':'savings:own','withdrawals':'withdrawals:own','applications':'applications:own'}
     if user.role and user.role.name=='member' and required.get(row.screen) in codes:return '/portal/member/'+row.screen
     if row.screen=='dashboard' and user.role:

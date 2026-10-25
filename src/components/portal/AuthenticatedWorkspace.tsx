@@ -1,3 +1,5 @@
+import {ContentManagement} from './ContentManagement';
+import {SupportCentre} from './SupportCentre';
 ﻿import { Link, Navigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Menu, LogOut, ArrowUpRight, ArrowRight } from "lucide-react";
@@ -20,10 +22,10 @@ import { ApplicationScreens } from "./ApplicationScreens";
 import {StaffAdministration,NotificationCentre,NotificationDelivery} from './AccountAdministration';
 import { AssistedRegistration } from "@/components/auth/AssistedRegistration";
 const supported: Record<Role, string[]> = {
-  member: ["notifications", "withdrawals", "contributions", "dashboard", "fees", "plans", "applications"],
-  staff: ["notifications", "withdrawals", "payments", "reports", "contributions", "dashboard", "registrations", "assist-registration", "plan-applications"],
+  member: ["support", "notifications", "withdrawals", "contributions", "dashboard", "fees", "plans", "applications"],
+  staff: ["support", "cms", "announcements", "notifications", "withdrawals", "payments", "reports", "contributions", "dashboard", "registrations", "assist-registration", "plan-applications"],
   finance: ["notifications", "withdrawals", "reports", "contributions", "verification", "reconciliation", "ledger", "dashboard", "fees"],
-  admin: [
+  admin: ["support", "cms", "announcements",
     "staff", "roles", "notifications", "notification-deliveries",
     "withdrawals",
     "reports",
@@ -39,6 +41,9 @@ const supported: Record<Role, string[]> = {
   ],
 };
 const descriptions: Record<string, string> = {
+ support:"Private member questions, office replies and recorded status history.",
+ cms:"Draft, review and explicitly publish organisation information.",
+ announcements:"Manage reviewed, versioned public announcements.",
   staff:'Invite and administer operational staff using existing security permissions.',
   roles:'Inspect capabilities and assign individual operational access.',
   notifications:'Private updates from completed application and financial events.',
@@ -317,7 +322,7 @@ export function AuthenticatedWorkspace({ role, screen }: { role: Role; screen: s
                 "This service is awaiting implementation. No simulated transactions are shown."}
             </p>
           </div>
-          {screen==='notifications'?<NotificationCentre/>:role==='admin'&&screen==='notification-deliveries'?<NotificationDelivery/>:role==='admin'&&['staff','roles'].includes(screen)?<StaffAdministration capabilitiesOnly={screen==='roles'}/>:screen === "withdrawals" ? <Withdrawals member={role === "member"}/> : screen === "reports" && role !== "member" ? <FinancialReports/> : screen === "contributions" || (role === "finance" && ["verification","reconciliation","ledger"].includes(screen)) ? <SavingsWorkspace key={screen} member={role === "member"} initialStatus={screen === "verification" ? "Pending verification" : screen === "reconciliation" ? "Verified" : screen === "ledger" ? "Confirmed" : ""}/> : role === "staff" && screen === "payments" ? <SubscriptionPayments/> : (role === "staff" || role === "finance") && screen === "dashboard" ? (
+          {screen==='support'?<SupportCentre member={role==='member'}/>:(['cms','announcements'].includes(screen)&&(role==='admin'||role==='staff'))?<ContentManagement/>:screen==='notifications'?<NotificationCentre/>:role==='admin'&&screen==='notification-deliveries'?<NotificationDelivery/>:role==='admin'&&['staff','roles'].includes(screen)?<StaffAdministration capabilitiesOnly={screen==='roles'}/>:screen === "withdrawals" ? <Withdrawals member={role === "member"}/> : screen === "reports" && role !== "member" ? <FinancialReports/> : screen === "contributions" || (role === "finance" && ["verification","reconciliation","ledger"].includes(screen)) ? <SavingsWorkspace key={screen} member={role === "member"} initialStatus={screen === "verification" ? "Pending verification" : screen === "reconciliation" ? "Verified" : screen === "ledger" ? "Confirmed" : ""}/> : role === "staff" && screen === "payments" ? <SubscriptionPayments/> : (role === "staff" || role === "finance") && screen === "dashboard" ? (
             <TaskHome role={role} />
           ) : (role === "admin" && screen === "finance") ||
             (role === "finance" && screen === "fees") ? (

@@ -144,3 +144,5 @@ from app.routers.withdrawals import router as withdrawals_router
 app.include_router(withdrawals_router)
 from app.routers.account_workflows import router as account_workflows_router
 app.include_router(account_workflows_router)
+from app.routers.content_support import router as content_support_router
+app.include_router(content_support_router)

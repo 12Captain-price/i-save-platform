@@ -40,6 +40,28 @@ async function upstream(path: string, init: RequestInit = {}) {
   });
 }
 
+async function editorialSupport(request:Request,url:URL){
+ const path=url.pathname;
+ const publicPath=/^\/api\/public\/content(?:\/media\/[1-9][0-9]{0,9})?$/.test(path);
+ const content=/^\/api\/content(?:\/media(?:\/[1-9][0-9]{0,9})?|\/versions\/[1-9][0-9]{0,9}(?:\/decision)?|\/[1-9][0-9]{0,9}\/history)?$/.test(path);
+ const support=/^\/api\/support(?:\/assignees|\/[1-9][0-9]{0,9})?$/.test(path);
+ if(!publicPath&&!content&&!support)return message('Not found.',404);
+ const writing=request.method==='POST';
+ if(request.method!=='GET'&&!writing)return message('Method not allowed.',405);
+ if(publicPath&&writing)return message('Method not allowed.',405);
+ if(writing&&!(/^\/api\/(?:content(?:\/media|\/versions\/[1-9][0-9]{0,9}\/decision)?|support(?:\/[1-9][0-9]{0,9})?)$/.test(path)))return message('Method not allowed.',405);
+ const token=publicPath?null:tokenFrom(request);if(!publicPath&&!token)return expired(request);
+ if(writing&&(request.headers.get('origin')!==url.origin||request.headers.get('x-isave-request')!=='1'))return message('Reload and retry.',403);
+ for(const key of url.searchParams.keys())if(writing||!['q','kind','status','skip','limit'].includes(key)||url.searchParams.getAll(key).length!==1)return message('Unsupported parameters.',400);
+ const body=writing?await boundedBody(request,path==='/api/content/media'?4*1024*1024:65536):undefined;if(body===null)return message('Request exceeds the size limit.',413);
+ const endpoint=new URL('/api/v1'+path.slice(4),process.env['AUTH_API_ORIGIN']??'http://127.0.0.1:8000');endpoint.search=url.search;
+ const response=await fetch(endpoint,{method:request.method,headers:{...(token?{Authorization:`Bearer ${token}`} :{}),...(writing?{'Content-Type':'application/json'}:{})},...(body!==undefined?{body}:{}),cache:'no-store',redirect:'error',signal:AbortSignal.timeout(30000)});
+ if(!publicPath&&response.status===401)return expired(request);
+ if(!response.ok){const data=await response.json().catch(()=>({}));return message(typeof data.error?.message==='string'?data.error.message:'Unable to load approved information. Please retry.',response.status);}
+ if(response.headers.get('content-type')?.startsWith('image/'))return new Response(await response.arrayBuffer(),{headers:{'Content-Type':response.headers.get('content-type')!,'Content-Disposition':'inline; filename="public-image.png"',...headers}});
+ return Response.json(await response.json(),{headers});
+}
+
 async function accountOperations(request: Request,url: URL) {
   const path=url.pathname;
   const allowed=/^\/api\/(?:notifications(?:\/[1-9][0-9]{0,9})?|admin\/(?:account-links\/[a-f0-9-]{36}\/replace|capabilities|staff(?:\/invitations|\/[1-9][0-9]{0,9}\/(?:invitation|status|permissions\/[a-z:-]+))?|notification-deliveries(?:\/[1-9][0-9]{0,9}\/retry)?))$/.test(path);
@@ -561,6 +583,8 @@ export async function handleAuthentication(request: Request): Promise<Response |
   const url = new URL(request.url);
   const path = url.pathname;
   if (
+    !path.startsWith('/api/content') &&
+    !path.startsWith('/api/support') &&
     !path.startsWith("/api/notifications") &&
     !path.startsWith("/api/withdrawals") &&
     !path.startsWith("/api/financial/") &&
@@ -578,6 +602,7 @@ export async function handleAuthentication(request: Request): Promise<Response |
   )
     return null;
   try {
+    if(path.startsWith('/api/content')||path.startsWith('/api/support')||path.startsWith('/api/public/content'))return await editorialSupport(request,url);
     const extended = await evidenceAndPlans(request, url);
     if (extended) return extended;
     if (

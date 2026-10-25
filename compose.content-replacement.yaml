@@ -1,0 +1,74 @@
+# Authorised replacement rehearsal only: no normal environment or volume imports.
+# Use -p isave-content-replacement-20261025 with this file ALONE.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: isave_test_content_replacement_20261025
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - rehearsal_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD','pg_isready','-U','postgres','-d','isave_test_content_replacement_20261025']
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  mailpit:
+    image: axllent/mailpit:v1.31.6
+    environment:
+      MP_DATABASE: /data/mailpit.db
+      MP_MAX_MESSAGES: 100
+    volumes:
+      - rehearsal_mail:/data
+    ports:
+      - '127.0.0.1:18025:8025'
+      - '127.0.0.1:11025:1025'
+  backend:
+    image: isave-content-rehearsal-backend:latest
+    pull_policy: never
+    environment: &backend_environment
+      DATABASE_URL: postgresql+psycopg://postgres@db:5432/isave_test_content_replacement_20261025
+      APP_ENV: development
+      DOCUMENT_SCAN_TEST_ONLY: 'false'
+      INVITATION_DELIVERY: mailpit
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      SMTP_FROM: isave-local@example.test
+      PASSWORD_SETUP_FRONTEND_URL: http://127.0.0.1:13070
+    ports: ['127.0.0.1:18070:8000']
+    depends_on:
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    healthcheck:
+      test: ['CMD','python','-c',"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready')"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  account-worker:
+    image: isave-content-rehearsal-backend:latest
+    pull_policy: never
+    entrypoint: ['python','-m','app.account_worker']
+    environment: *backend_environment
+    depends_on:
+      backend:
+        condition: service_healthy
+  frontend:
+    image: isave-content-rehearsal-frontend:latest
+    pull_policy: never
+    environment:
+      AUTH_API_ORIGIN: http://backend:8000
+      HOST: 0.0.0.0
+    ports: ['127.0.0.1:13070:3000']
+    depends_on:
+      backend:
+        condition: service_healthy
+volumes:
+  rehearsal_pg:
+    name: isave-content-replacement-20261025-pg-7d9c2e1a
+  rehearsal_mail:
+    name: isave-content-replacement-20261025-mail-7d9c2e1a
+networks:
+  default:
+    name: isave-content-replacement-20261025-private

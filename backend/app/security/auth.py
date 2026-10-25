@@ -25,6 +25,8 @@ PERMISSIONS |= {'documents:view', 'documents:review', 'documents:replace', 'plan
 PERMISSIONS |= {"subscription-fees:record", "subscription-fees:verify"}
 PERMISSIONS |= {'subscriptions:generate','reports:read','reports:export'}
 PERMISSIONS |= {'withdrawals:'+c for c in ['own','read','approve','process','verify']}
+PERMISSIONS |= {'content:'+c for c in ['read','draft','review','publish','archive']}
+PERMISSIONS |= {'support:'+c for c in ['own','read','reply','internal','assign','resolve']}
 PERMISSIONS |= {"plans:drafts:read", "plans:drafts:write", "settings:read", "settings:write", "settings:publish"}
 from app.membership_policy import CAPABILITIES
 PERMISSIONS |= CAPABILITIES
@@ -85,6 +87,9 @@ def permissions(db, user):
                            .where(UserPermission.user_id == user.id))
     for code, allowed in overrides:
         codes.add(code) if allowed else codes.discard(code)
+    if not user.role or user.role.name not in {'administrator','staff'}:
+        codes -= {p for p in PERMISSIONS if p.startswith('content:') or (p.startswith('support:') and p!='support:own')}
+    if not user.role or user.role.name!='member':codes.discard('support:own')
     if not user.role or user.role.name not in {'administrator','staff','finance'}:
         codes -= {'savings:'+c for c in ['read','record','verify','reconcile','reverse','extra']}
     if not user.role or user.role.name!='member':

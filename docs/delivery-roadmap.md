@@ -8,6 +8,12 @@ authentication; unconnected screens show unavailable states, without sample data
 
 ## Source material and decisions
 
+The content management and owned member-support extension is documented in
+[content and support](content-support.md). It adds explicit editorial
+review/publication, separate scanned public media and immutable private support
+conversations. Contacts remain in published settings; legal approval, retention,
+real scanner operations and external sending remain separate dependencies.
+
 The staff administration, secure invitations/recovery and essential notification
 extension is documented in [staff administration](staff-administration.md),
 including current validation/activation gates and remaining delivery limitations.
