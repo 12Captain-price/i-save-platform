@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { MembershipReview } from "./MembershipReview";
 import { ApplicationDocuments } from './ApplicationDocuments';
+import { LaunchAvailability } from '../auth/LaunchAvailability';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Feedback, useRecords } from "./AdminDataScreens";
@@ -88,7 +89,7 @@ function ApplicationDetails({ id, back }: { id: number; back: () => void }) {
               History
             </a>
           </nav>
-          <ApplicationDocuments id={id} onChange={result.reload}/>
+          <LaunchAvailability kind="documents"><ApplicationDocuments id={id} onChange={result.reload}/></LaunchAvailability>
           <section
             id="application-details"
             aria-label="Submission source and authorisation"
@@ -180,7 +181,7 @@ function ApplicationDetails({ id, back }: { id: number; back: () => void }) {
             </dl>
           </section>
           <div id="application-payments" className="scroll-mt-6">
-            <MembershipReview id={id} onChange={result.reload} />
+            <LaunchAvailability kind="financial"><MembershipReview id={id} onChange={result.reload} /></LaunchAvailability>
           </div>
           <section
             id="application-history"

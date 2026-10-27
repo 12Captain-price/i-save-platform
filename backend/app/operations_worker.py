@@ -4,6 +4,9 @@ import time
 from app.services.backups import process_one
 
 def main():
+    from app.database import engine
+    from app.deployment import validate_deployment_data
+    validate_deployment_data(engine)
     while True:
         try:processed=process_one()
         except Exception:

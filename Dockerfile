@@ -38,6 +38,7 @@ ENV NODE_ENV=production
 
 # Only the Nitro output is needed to run the server.
 COPY --from=build /app/.output ./.output
+COPY deploy/validate-frontend.mjs ./validate-frontend.mjs
 
 EXPOSE 3000
 
@@ -46,4 +47,4 @@ RUN adduser --system --disabled-password nitro && \
     chown -R nitro:root /app/.output
 USER nitro
 
-CMD ["node", ".output/server/index.mjs"]
+CMD ["node", "--import", "./validate-frontend.mjs", ".output/server/index.mjs"]

@@ -72,9 +72,7 @@ def private_routes():
                 continue
             if path in {"/api/v1/auth/recovery", "/api/v1/auth/reset-password", "/api/v1/registration", "/api/v1/auth/setup-password", "/api/v1/public/contacts", "/api/v1/public/registration-requirements", "/api/v1/public/plan-offers"}:
                 continue
-            if path.startswith('/api/v1/public/content') or path=='/api/v1/public/campaign-unsubscribe':continue
-            if method == "get" and path.startswith("/api/v1/plans"):
-                continue
+            if path.startswith('/api/v1/public/content') or path in {'/api/v1/public/campaign-unsubscribe','/api/v1/public/availability'}:continue
             yield method, re.sub(r"\{[^}]+\}", "1", path)
 
 
@@ -255,7 +253,8 @@ def test_password_change_revokes_every_session(client, db, accounts):
 
 
 def test_public_plans_only_allow_public_reads(client):
-    assert client.get("/api/v1/plans").status_code == 200
+    assert client.get("/api/v1/plans").status_code == 401
+    assert client.get('/api/v1/public/plan-offers').status_code == 200
     assert client.post("/api/v1/plans", json={"name":"unauthorized"}).status_code == 401
 
 

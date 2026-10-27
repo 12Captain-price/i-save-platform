@@ -5,7 +5,7 @@ ENV PATH="/opt/venv/bin:$PATH" PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app/backend
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY app ./app
+RUN --mount=type=bind,source=app,target=/source,readonly python -c "import shutil; shutil.copytree('/source','app',ignore=shutil.ignore_patterns('*rehearsal*.py','__pycache__'))"
 COPY alembic ./alembic
 COPY alembic.ini ./
 ENTRYPOINT []

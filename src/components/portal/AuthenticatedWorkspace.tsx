@@ -1,4 +1,5 @@
 import {Campaigns,MarketingPreferences} from './Campaigns';
+import {LaunchAvailability} from '../auth/LaunchAvailability';
 import {DocumentOperations} from './DocumentOperations';
 import {ContentManagement} from './ContentManagement';
 import {SupportCentre} from './SupportCentre';
@@ -149,6 +150,8 @@ function TaskHome({ role }: { role: "staff" | "finance" }) {
   );
 }
 export function AuthenticatedWorkspace({ role, screen }: { role: Role; screen: string }) {
+  const financial=['withdrawals','contributions','payments','verification','reconciliation','ledger','fees','finance','campaigns','plan-applications'].includes(screen)||(role==='member'&&['plans','applications'].includes(screen));
+  const kind=screen==='assist-registration'?'registration':financial?'financial':'workspace';
   const auth = useAuth();
   const [open, setOpen] = useState(false),
     [error, setError] = useState(""),
@@ -326,6 +329,7 @@ export function AuthenticatedWorkspace({ role, screen }: { role: Role; screen: s
                 "This service is awaiting implementation. No simulated transactions are shown."}
             </p>
           </div>
+          <LaunchAvailability kind={kind} admin={role==='admin'}>
           {screen==='operations'&&role==='admin'?<DocumentOperations/>:screen==='email-preferences'&&role==='member'?<MarketingPreferences/>:screen==='campaigns'&&(role==='admin'||role==='staff')?<Campaigns/>:screen==='support'?<SupportCentre member={role==='member'}/>:(['cms','announcements'].includes(screen)&&(role==='admin'||role==='staff'))?<ContentManagement/>:screen==='notifications'?<NotificationCentre/>:role==='admin'&&screen==='notification-deliveries'?<NotificationDelivery/>:role==='admin'&&['staff','roles'].includes(screen)?<StaffAdministration capabilitiesOnly={screen==='roles'}/>:screen === "withdrawals" ? <Withdrawals member={role === "member"}/> : screen === "reports" && role !== "member" ? <FinancialReports/> : screen === "contributions" || (role === "finance" && ["verification","reconciliation","ledger"].includes(screen)) ? <SavingsWorkspace key={screen} member={role === "member"} initialStatus={screen === "verification" ? "Pending verification" : screen === "reconciliation" ? "Verified" : screen === "ledger" ? "Confirmed" : ""}/> : role === "staff" && screen === "payments" ? <SubscriptionPayments/> : (role === "staff" || role === "finance") && screen === "dashboard" ? (
             <TaskHome role={role} />
           ) : (role === "admin" && screen === "finance") ||
@@ -373,6 +377,7 @@ export function AuthenticatedWorkspace({ role, screen }: { role: Role; screen: s
               </div>
             </section>
           )}
+          </LaunchAvailability>
         </main>
         <footer className="px-5 pb-8 text-xs text-muted-foreground md:px-10">
           i-Save · Fees and subscriptions are separate from savings.

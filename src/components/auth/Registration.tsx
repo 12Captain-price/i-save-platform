@@ -9,11 +9,12 @@ import { SavingsCategoryChoice } from "./SavingsCategoryChoice";
 import { savingsInterest } from "@/lib/savings-interest";
 import authorization from "../../../backend/app/assisted_authorization.json";
 import { RegistrationEvidence, evidencePayload } from './RegistrationEvidence';
+import { LaunchAvailability } from './LaunchAvailability';
 
 export function Registration() {
   return (
     <PublicLayout>
-      <RegistrationForm />
+      <LaunchAvailability kind="registration"><RegistrationForm /></LaunchAvailability>
     </PublicLayout>
   );
 }

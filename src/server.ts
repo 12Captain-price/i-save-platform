@@ -3,6 +3,8 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { handleAuthentication } from "./lib/auth-server";
+import { gatewayRequest, validateHostedConfiguration } from './lib/gateway-server';
+validateHostedConfiguration();
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -47,6 +49,8 @@ function isH3SwallowedErrorBody(body: string): boolean {
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    if(new URL(request.url).pathname==='/healthz')return new Response('ok');
+    return gatewayRequest(request,async(request)=>{
     try {
       const authentication = await handleAuthentication(request);
       if (authentication) return authentication;
@@ -58,11 +62,12 @@ export default {
       }
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
-      console.error(error);
+      console.error('Request failed safely; inspect redacted service status.');
       return new Response(renderErrorPage(), {
         status: 500,
         headers: { "content-type": "text/html; charset=utf-8" },
       });
     }
+    });
   },
 };

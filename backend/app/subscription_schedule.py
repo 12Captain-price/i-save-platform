@@ -11,7 +11,12 @@ def main():
     parser.add_argument('--through')
     parser.add_argument('--preview',action='store_true')
     args=parser.parse_args()
+    from app.config import get_settings
+    if not args.preview and get_settings().effective_launch_mode != 'full':
+        raise SystemExit('Subscription generation is unavailable in the current launch mode')
     require_current_schema(engine)
+    from app.deployment import validate_deployment_data
+    validate_deployment_data(engine)
     with Session(engine) as db:
         result=plan(db,args.through) if args.preview else generate(db,through=args.through)
         if not args.preview:db.commit()

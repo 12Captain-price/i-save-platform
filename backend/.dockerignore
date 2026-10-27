@@ -27,3 +27,4 @@ htmlcov/
 Dockerfile*
 README.md
 .DS_Store
+deploy-secrets/

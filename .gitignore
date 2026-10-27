@@ -63,6 +63,7 @@ playwright-report/
 
 # Local database files and SQLite sidecars
 backend/data/
+.gateway-private/
 *.db-wal
 *.db-shm
 *.sqlite-wal

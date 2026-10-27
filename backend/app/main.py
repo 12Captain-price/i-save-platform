@@ -39,11 +39,14 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     require_current_schema(engine)
+    from app.deployment import validate_deployment_data
+    validate_deployment_data(engine)
     yield
 
 
 app = FastAPI(
     lifespan=lifespan,
+    redirect_slashes=settings.app_env != 'production',
     title=settings.app_name,
     debug=settings.app_debug,
     docs_url="/docs" if settings.app_debug else None,
@@ -150,3 +153,15 @@ from app.routers.content_support import router as content_support_router
 app.include_router(content_support_router)
 from app.routers.campaigns import router as campaigns_router
 app.include_router(campaigns_router)
+
+@app.get('/api/v1/public/availability')
+def availability():
+    mode = get_settings().effective_launch_mode
+    return {'mode':mode,'applications':mode in {'applications','full'},'financial_actions':mode=='full',
+            'message':'Full platform scope remains the goal. Availability also requires permissions and approved policies.'}
+
+# Outer boundary validates assertions before launch checks inspect the session.
+from app.security.launch import LaunchBoundary
+from app.security.gateway import GatewayBoundary
+app.add_middleware(LaunchBoundary)
+app.add_middleware(GatewayBoundary)

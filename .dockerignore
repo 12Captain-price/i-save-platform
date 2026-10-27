@@ -45,3 +45,10 @@ backend/app/**
 !backend/app/membership_policy.json
 test-results/
 playwright-report/
+docs/**
+scripts/**
+deploy/**
+!deploy/validate-frontend.mjs
+!deploy/validate-frontend.d.mts
+deploy-secrets/**
+.gateway-private/**

@@ -1,0 +1,110 @@
+# Standalone hosted/staging profile. Never combine with normal compose.yaml.
+# Required files and certificates live OUTSIDE the repository. No normal volumes.
+name: ${STAGING_PROJECT:?A unique staging project is required}
+x-runtime: &runtime
+  APP_ENV: production
+  DEPLOYMENT_TIER: ${STAGING_DEPLOYMENT_TIER:-staging}
+  APP_DEBUG: 'false'
+  LAUNCH_MODE: ${STAGING_LAUNCH_MODE:-informational}
+  PUBLIC_ORIGIN: ${STAGING_PUBLIC_ORIGIN:?HTTPS public origin required}
+  PASSWORD_SETUP_FRONTEND_URL: ${STAGING_PUBLIC_ORIGIN}
+  CORS_ORIGINS: ${STAGING_PUBLIC_ORIGIN}
+  DATABASE_URL_FILE: /run/secrets/database_url
+  SECRET_KEY_FILE: /run/secrets/application_key
+  GATEWAY_TOKEN_FILE: /run/secrets/gateway_token
+  DOCUMENT_SCAN_HOST: scanner
+  DOCUMENT_SCAN_TEST_ONLY: 'false'
+  INVITATION_DELIVERY: disabled
+  CAMPAIGN_DELIVERY_ENABLED: 'false'
+  SMTP_HOST: ''
+  SMTP_FROM: disabled
+x-backend: &backend
+  image: ${STAGING_PROJECT}-backend
+  build: {context: ./backend, dockerfile: Dockerfile.hosted}
+  environment: *runtime
+  secrets: [database_url, application_key, gateway_token]
+  networks: [private_api, private_data, private_scan]
+  restart: unless-stopped
+services:
+  gateway:
+    image: nginx:1.28-alpine
+    entrypoint: [/bin/sh, /isave/start.sh]
+    environment:
+      PUBLIC_ORIGIN: ${STAGING_PUBLIC_ORIGIN}
+    secrets: [gateway_token, tls_certificate, tls_key]
+    volumes:
+      - ./deploy/gateway/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./deploy/gateway/start.sh:/isave/start.sh:ro
+    ports:
+      - '${STAGING_BIND:-127.0.0.1}:${STAGING_HTTPS_PORT:-13443}:8443'
+      - '${STAGING_BIND:-127.0.0.1}:${STAGING_HTTP_PORT:-13081}:8080'
+    networks: [edge]
+    depends_on: [frontend]
+    restart: unless-stopped
+  frontend:
+    build: {context: ., dockerfile: Dockerfile}
+    environment:
+      ISAVE_ENV: production
+      PUBLIC_ORIGIN: ${STAGING_PUBLIC_ORIGIN}
+      GATEWAY_TOKEN_FILE: /run/secrets/gateway_token
+      AUTH_API_ORIGIN: http://backend:8000
+      HOST: 0.0.0.0
+      PORT: 3000
+    secrets: [gateway_token]
+    networks: [edge, private_api]
+    depends_on: [backend]
+    restart: unless-stopped
+  backend:
+    <<: *backend
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+  migrate:
+    <<: *backend
+    profiles: [maintenance]
+    command: [python, -m, app.migrations, upgrade]
+    restart: 'no'
+  account-worker:
+    <<: *backend
+    command: [python, -m, app.account_worker]
+  subscription-schedule:
+    <<: *backend
+    profiles: [scheduled]
+    command: [python, -m, app.subscription_schedule]
+    restart: 'no'
+  scanner:
+    image: clamav/clamav:1.4@sha256:3bba6dd5ac6663d55b80f86a3126e146612d93b593cc2617188d13f637d91260
+    volumes: [scanner_signatures:/var/lib/clamav]
+    networks: [private_scan, updates]
+    restart: unless-stopped
+  operations-worker:
+    profiles: [operations]
+    build: {context: ./backend, dockerfile: Dockerfile.operations}
+    environment:
+      <<: *runtime
+      BACKUP_KEY_FILE: /run/secrets/backup_key
+      RESTORE_TEST_URL_FILE: /run/secrets/restore_url
+    secrets: [database_url, application_key, gateway_token, backup_key, restore_url]
+    volumes: [encrypted_archives:/var/lib/isave-backups]
+    shm_size: 512m
+    networks: [private_data]
+    restart: unless-stopped
+networks:
+  edge: {}
+  private_api: {internal: true}
+  private_data: {} # Private managed PostgreSQL/restore endpoints; firewall required.
+  private_scan: {internal: true}
+  updates: {} # Scanner needs outbound signature updates, never a published port.
+volumes:
+  scanner_signatures: {}
+  encrypted_archives: {}
+secrets:
+  database_url: {file: '${STAGING_DATABASE_URL_FILE:?Private DSN file required}'}
+  application_key: {file: '${STAGING_APPLICATION_KEY_FILE:?Private key file required}'}
+  gateway_token: {file: '${STAGING_GATEWAY_TOKEN_FILE:?Private gateway key file required}'}
+  tls_certificate: {file: '${STAGING_TLS_CERT_FILE:?TLS certificate file required}'}
+  tls_key: {file: '${STAGING_TLS_KEY_FILE:?TLS key file required}'}
+  backup_key: {file: '${STAGING_BACKUP_KEY_FILE:?Private archive key file required}'}
+  restore_url: {file: '${STAGING_RESTORE_URL_FILE:?Independent restore DSN file required}'}

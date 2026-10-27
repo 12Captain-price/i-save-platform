@@ -9,3 +9,6 @@
         value: render-com
       - key: HOST
         value: 0.0.0.0
+# Legacy frontend-only description, not a full-platform hosted deployment.
+# See docs/production-gateway-runbook.md and standalone compose.staging.yaml.
+# Do not use this file alone to launch membership or financial services.

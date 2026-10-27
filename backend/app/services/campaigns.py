@@ -24,7 +24,7 @@ def lock_campaign(db,identifier):
     if not row:fail('Campaign not found',404)
     return row
 def latest(db,c):return db.query(Version).filter_by(campaign_id=c.id,version=c.latest_version).one()
-def delivery_available():return get_settings().campaign_delivery_enabled and get_invitation_mailer().available and get_invitation_mailer().mode=='mailpit'
+def delivery_available():return get_settings().effective_launch_mode=='full' and get_settings().campaign_delivery_enabled and get_invitation_mailer().available and get_invitation_mailer().mode=='mailpit'
 def preference(db,user):
     row=db.get(Preference,user.id)
     return {'enabled':row.enabled if row else False,'revision':row.revision if row else 0,'version':CONSENT_VERSION,'wording':CONSENT_WORDING,

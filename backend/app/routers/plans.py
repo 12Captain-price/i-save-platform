@@ -22,7 +22,7 @@ def create_plan(
     return plan_service.create_plan(db, plan_in)
 
 
-@router.get("", response_model=list[SavingsPlanRead])
+@router.get("", response_model=list[SavingsPlanRead], dependencies=[Depends(require('plans:read'))])
 def list_plans(
     db: Annotated[Session, Depends(get_db)],
     skip: Annotated[int, Query(ge=0)] = 0,
@@ -31,7 +31,7 @@ def list_plans(
     return plan_service.list_plans(db, skip=skip, limit=limit)
 
 
-@router.get("/{plan_id}", response_model=SavingsPlanRead)
+@router.get("/{plan_id}", response_model=SavingsPlanRead, dependencies=[Depends(require('plans:read'))])
 def get_plan(
     plan_id: Annotated[int, Path(gt=0)],
     db: Annotated[Session, Depends(get_db)],

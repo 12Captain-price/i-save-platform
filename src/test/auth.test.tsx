@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider, useAuth } from '@/components/auth/AuthProvider';
 import { AuthenticatedWorkspace } from '@/components/portal/AuthenticatedWorkspace';
 import type { Identity } from '@/lib/auth-types';
+// Launch policy has its own integration tests; these isolate session/role shell behaviour.
+vi.mock('@/components/auth/LaunchAvailability',()=>({LaunchAvailability:({children}:{children:React.ReactNode})=><>{children}</>}));
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,

@@ -1,3 +1,4 @@
+import { backendFetch, gatewayRequest } from "./gateway-server";
 // Imported only by the server entry. Never serialize bearer tokens into HTML/JSON.
 import { isWorkspace, type Identity } from "./auth-types";
 
@@ -32,7 +33,7 @@ function expired(request: Request) {
 
 async function upstream(path: string, init: RequestInit = {}) {
   const origin = process.env["AUTH_API_ORIGIN"] ?? "http://127.0.0.1:8000";
-  return fetch(new URL(`/api/v1/auth/${path}`, origin), {
+  return backendFetch(new URL(`/api/v1/auth/${path}`, origin), {
     ...init,
     cache: "no-store",
     redirect: "error",
@@ -52,7 +53,7 @@ async function campaignBridge(request:Request,url:URL){
  for(const key of url.searchParams.keys())if(writing||!['q','state','skip','limit'].includes(key)||url.searchParams.getAll(key).length!==1)return message('Unsupported parameters.',400);
  const body=writing?await boundedBody(request,publicUnsubscribe?1024:65536):undefined;if(body===null)return message('Request too large.',413);
  const endpoint=new URL(publicUnsubscribe?'/api/v1/public/campaign-unsubscribe':'/api/v1'+path.slice(4),process.env['AUTH_API_ORIGIN']??'http://127.0.0.1:8000');endpoint.search=url.search;
- const r=await fetch(endpoint,{method:request.method,headers:{...(token?{Authorization:`Bearer ${token}`} :{}),...(writing?{'Content-Type':'application/json'}:{})},...(body!==undefined?{body}:{}),cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
+ const r=await backendFetch(endpoint,{method:request.method,headers:{...(token?{Authorization:`Bearer ${token}`} :{}),...(writing?{'Content-Type':'application/json'}:{})},...(body!==undefined?{body}:{}),cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
  if(!publicUnsubscribe&&r.status===401)return expired(request);
  if(!r.ok){const data=await r.json().catch(()=>({}));return message(typeof data.error?.message==='string'?data.error.message:'Unable to complete this request. Please retry.',r.status);}
  return Response.json(await r.json(),{headers});
@@ -68,7 +69,7 @@ async function operationsBridge(request:Request,url:URL){
  for(const key of url.searchParams.keys())if(writing||!['skip','limit'].includes(key)||url.searchParams.getAll(key).length!==1)return message('Unsupported parameters.',400);
  const body=writing?await boundedBody(request,65536):undefined;if(body===null)return message('Request too large.',413);
  const endpoint=new URL('/api/v1'+path.slice(4),process.env['AUTH_API_ORIGIN']??'http://127.0.0.1:8000');endpoint.search=url.search;
- const r=await fetch(endpoint,{method:request.method,headers:{Authorization:`Bearer ${token}`,...(writing?{'Content-Type':'application/json'}:{})},...(body!==undefined?{body}:{}),cache:'no-store',redirect:'error',signal:AbortSignal.timeout(20000)});
+ const r=await backendFetch(endpoint,{method:request.method,headers:{Authorization:`Bearer ${token}`,...(writing?{'Content-Type':'application/json'}:{})},...(body!==undefined?{body}:{}),cache:'no-store',redirect:'error',signal:AbortSignal.timeout(20000)});
  if(r.status===401)return expired(request);
  if(!r.ok){const data=await r.json().catch(()=>({}));return message(typeof data.error?.message==='string'?data.error.message:'Operation failed. Retry safely.',r.status);}
  return Response.json(await r.json(),{headers});
@@ -89,7 +90,7 @@ async function editorialSupport(request:Request,url:URL){
  for(const key of url.searchParams.keys())if(writing||!['q','kind','status','skip','limit'].includes(key)||url.searchParams.getAll(key).length!==1)return message('Unsupported parameters.',400);
  const body=writing?await boundedBody(request,path==='/api/content/media'?4*1024*1024:65536):undefined;if(body===null)return message('Request exceeds the size limit.',413);
  const endpoint=new URL('/api/v1'+path.slice(4),process.env['AUTH_API_ORIGIN']??'http://127.0.0.1:8000');endpoint.search=url.search;
- const response=await fetch(endpoint,{method:request.method,headers:{...(token?{Authorization:`Bearer ${token}`} :{}),...(writing?{'Content-Type':'application/json'}:{})},...(body!==undefined?{body}:{}),cache:'no-store',redirect:'error',signal:AbortSignal.timeout(30000)});
+ const response=await backendFetch(endpoint,{method:request.method,headers:{...(token?{Authorization:`Bearer ${token}`} :{}),...(writing?{'Content-Type':'application/json'}:{})},...(body!==undefined?{body}:{}),cache:'no-store',redirect:'error',signal:AbortSignal.timeout(30000)});
  if(!publicPath&&response.status===401)return expired(request);
  if(!response.ok){const data=await response.json().catch(()=>({}));return message(typeof data.error?.message==='string'?data.error.message:'Unable to load approved information. Please retry.',response.status);}
  if(response.headers.get('content-type')?.startsWith('image/'))return new Response(await response.arrayBuffer(),{headers:{'Content-Type':response.headers.get('content-type')!,'Content-Disposition':'inline; filename="public-image.png"',...headers}});
@@ -108,7 +109,7 @@ async function accountOperations(request: Request,url: URL) {
   const body=expected!=='GET'?await boundedBody(request,4096):undefined;
   if(body===null)return message('Request too large.',413);
   const endpoint=new URL('/api/v1'+path.slice(4),process.env['AUTH_API_ORIGIN']??'http://127.0.0.1:8000');endpoint.search=url.search;
-  const response=await fetch(endpoint,{method:expected,headers:{Authorization:`Bearer ${token}`,...(body!==undefined?{'Content-Type':'application/json'}:{})},...(body!==undefined?{body}:{}),cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
+  const response=await backendFetch(endpoint,{method:expected,headers:{Authorization:`Bearer ${token}`,...(body!==undefined?{'Content-Type':'application/json'}:{})},...(body!==undefined?{body}:{}),cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
   if(response.status===401)return expired(request);
   if(!response.ok){const data=await response.json().catch(()=>({}));return message(typeof data.error?.message==='string'?data.error.message:'Unable to complete request. Refresh before retrying.',response.status);}
   return Response.json(await response.json(),{headers});
@@ -139,7 +140,7 @@ async function adminRead(request: Request, url: URL) {
   const origin = process.env["AUTH_API_ORIGIN"] ?? "http://127.0.0.1:8000";
   const endpoint = new URL(target, origin);
   endpoint.search = params.toString();
-  const response = await fetch(endpoint, {
+  const response = await backendFetch(endpoint, {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
     redirect: "error",
@@ -202,7 +203,7 @@ async function membership(request: Request, url: URL) {
       return message("Check the entered details.", 400);
     }
   }
-  const response = await fetch(
+  const response = await backendFetch(
     new URL(
       `/api/v1/membership/${overview ? "overview" : fees ? "fees" : `applications/${match![1]}${action ? `/${action}` : ""}`}`,
       process.env["AUTH_API_ORIGIN"] ?? "http://127.0.0.1:8000",
@@ -250,7 +251,7 @@ async function financialOperations(request: Request,url: URL) {
  const body=writing?await boundedBody(request,4096):undefined;
  if(body===null)return message('Request too large.',413);
  const endpoint=new URL('/api/v1'+path.slice(4),process.env['AUTH_API_ORIGIN']??'http://127.0.0.1:8000');endpoint.search=url.search;
- const response=await fetch(endpoint,{method:request.method,headers:{Authorization:`Bearer ${token}`,...(writing?{'Content-Type':'application/json'}:{})},...(body!==undefined?{body}:{}),cache:'no-store',redirect:'error',signal:AbortSignal.timeout(30000)});
+ const response=await backendFetch(endpoint,{method:request.method,headers:{Authorization:`Bearer ${token}`,...(writing?{'Content-Type':'application/json'}:{})},...(body!==undefined?{body}:{}),cache:'no-store',redirect:'error',signal:AbortSignal.timeout(30000)});
  if(response.status===401)return expired(request);
  if(!response.ok){const data=await response.json().catch(()=>({}));return message(typeof data.error?.message==='string'?data.error.message:'Financial request could not be completed. Retry safely.',response.status);}
  if(response.headers.get('content-type')?.startsWith('text/csv'))return new Response(await response.text(),{headers:{'Content-Type':'text/csv','Content-Disposition':'attachment; filename="financial-report.csv"','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
@@ -292,7 +293,7 @@ async function subscriptionPayments(request: Request, url: URL) {
       return message("Check the payment fields.", 400);
     }
   }
-  const response = await fetch(endpoint, {
+  const response = await backendFetch(endpoint, {
     method: request.method,
     headers: {
       Authorization: `Bearer ${token}`,
@@ -347,7 +348,7 @@ async function organisationSettings(request: Request, url: URL) {
       return message("Check the settings fields.", 400);
     }
   }
-  const response = await fetch(
+  const response = await backendFetch(
     new URL(
       "/api/v1/admin/" + resource + (publish ? "/publish" : ""),
       process.env["AUTH_API_ORIGIN"] ?? "http://127.0.0.1:8000",
@@ -451,7 +452,7 @@ async function planDrafts(request: Request, url: URL) {
       return message("Check the draft fields.", 400);
     }
   }
-  const response = await fetch(endpoint, {
+  const response = await backendFetch(endpoint, {
     method: request.method,
     headers: {
       Authorization: `Bearer ${token}`,
@@ -567,7 +568,7 @@ async function evidenceAndPlans(request: Request, url: URL): Promise<Response | 
       return message("Check the request fields.", 400);
     }
   }
-  const response = await fetch(endpoint, {
+  const response = await backendFetch(endpoint, {
     method: request.method,
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -614,6 +615,10 @@ async function evidenceAndPlans(request: Request, url: URL): Promise<Response | 
 
 // The sole browser authentication boundary. Only explicitly listed paths are proxied.
 export async function handleAuthentication(request: Request): Promise<Response | null> {
+  return gatewayRequest(request, handleAuthenticationInternal);
+}
+
+async function handleAuthenticationInternal(request: Request): Promise<Response | null> {
   const url = new URL(request.url);
   const path = url.pathname;
   if (
@@ -646,16 +651,16 @@ export async function handleAuthentication(request: Request): Promise<Response |
     if (extended) return extended;
     if (
       path.startsWith("/api/savings") ||
-      (path.startsWith("/api/public/") && path !== "/api/public/contacts") ||
+      (path.startsWith("/api/public/") && path !== "/api/public/contacts" && path !== "/api/public/availability") ||
       path.startsWith("/api/application-documents/") ||
       path.startsWith("/api/member/")
     )
       return message("Not found.", 404);
-    if (path === "/api/public/contacts") {
+    if (path === "/api/public/contacts" || path === "/api/public/availability") {
       if (request.method !== "GET" || url.search) return message("Not found.", 404);
-      const response = await fetch(
+      const response = await backendFetch(
         new URL(
-          "/api/v1/public/contacts",
+          path === "/api/public/availability" ? "/api/v1/public/availability" : "/api/v1/public/contacts",
           process.env["AUTH_API_ORIGIN"] ?? "http://127.0.0.1:8000",
         ),
         { cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000) },
@@ -692,7 +697,7 @@ export async function handleAuthentication(request: Request): Promise<Response |
       } catch {
         return message("Check your application details.", 400);
       }
-      const response = await fetch(
+      const response = await backendFetch(
         new URL(
           assisted ? "/api/v1/registration/assisted" : "/api/v1/registration",
           process.env["AUTH_API_ORIGIN"] ?? "http://127.0.0.1:8000",
@@ -742,8 +747,8 @@ export async function handleAuthentication(request: Request): Promise<Response |
       if (["setup-password","recovery","reset-password"].includes(action)) {
         if (!request.headers.get("content-type")?.startsWith("application/json"))
           return message("Check your password and setup link.", 400);
-        const body = await request.text();
-        if (body.length > 4096) return message("Check your password and setup link.", 400);
+        const body = await boundedBody(request,4096);
+        if (body === null) return message("Check your password and setup link.", 400);
         let input: unknown;
         try {
           input = JSON.parse(body);
@@ -769,8 +774,8 @@ export async function handleAuthentication(request: Request): Promise<Response |
       if (action === "login") {
         if (!request.headers.get("content-type")?.startsWith("application/json"))
           return message("Enter your email and password.", 400);
-        const body = await request.text();
-        if (body.length > 4096) return message("Enter a valid email and password.", 400);
+        const body = await boundedBody(request,4096);
+        if (body === null) return message("Enter a valid email and password.", 400);
         let input: { email?: unknown; password?: unknown };
         try {
           input = JSON.parse(body);

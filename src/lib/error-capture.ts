@@ -5,7 +5,7 @@ let lastCapturedError: { error: unknown; at: number } | undefined;
 const TTL_MS = 5_000;
 
 function record(error: unknown) {
-  lastCapturedError = { error, at: Date.now() };
+  lastCapturedError = { error: process.env['ISAVE_ENV']==='production' ? new Error('Server error; private details suppressed') : error, at: Date.now() };
 }
 
 // h3's HTTPError serializes to {"status":500,"unhandled":true,"message":"HTTPError"} —
@@ -54,6 +54,10 @@ function isErrorLike(value: unknown): value is Error {
 // recorded for consumeLastCapturedError and expanded before serialization.
 const originalConsoleError = console.error.bind(console);
 console.error = (...args: unknown[]) => {
+  if(process.env['ISAVE_ENV']==='production'){
+    originalConsoleError('Server error; private details suppressed. Inspect protected service status.');
+    return;
+  }
   const expanded = args.map((arg) => {
     if (!isErrorLike(arg)) return arg;
     record(arg);

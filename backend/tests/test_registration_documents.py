@@ -66,7 +66,8 @@ def test_unsafe_uploads_denied_without_persistence(client,db,scan,patch):
 def test_scanner_failure_is_closed_and_test_mode_cannot_run_in_production(client,db,monkeypatch):
     from app.config import get_settings
     settings=get_settings();monkeypatch.setattr(settings,'document_scan_host','');monkeypatch.setattr(settings,'document_scan_test_only',True);monkeypatch.setattr(settings,'app_env','production')
-    response=client.post('https://testserver/api/v1/registration',json=application_body())
+    monkeypatch.setattr(settings,'gateway_token','b'*43);monkeypatch.setattr(settings,'launch_mode','full')
+    response=client.post('https://testserver/api/v1/registration',headers={'x-isave-gateway':'b'*43,'x-isave-client-ip':'198.51.100.21','x-isave-proto':'https'},json=application_body())
     assert response.status_code==503 and db.query(ApplicationEvidence).count()==0
     assert evidence.test_scanner_allowed() is False
 
@@ -75,7 +76,7 @@ def test_production_private_intake_requires_https(client,db,monkeypatch,scan):
     from app.config import get_settings
     monkeypatch.setattr(get_settings(),'app_env','production')
     response=client.post('/api/v1/registration',json=application_body())
-    assert response.status_code==400 and response.json()['error']['code']=='https_required'
+    assert response.status_code==403 and response.json()['error']['code']=='gateway_required'
     assert db.query(ApplicationEvidence).count()==0
 
 
