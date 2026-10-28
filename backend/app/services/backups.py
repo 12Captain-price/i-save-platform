@@ -1,13 +1,17 @@
 """Encrypted consistent PostgreSQL + in-database private-storage archives.
 
 No Docker socket, public downloads, live restore or plaintext archive on disk.
-The restore server must be a different PostgreSQL cluster and host.
+Restore requires a different endpoint and independently verified PostgreSQL
+cluster. Hosted operators must also establish an independent failure domain.
 """
 import hashlib
 import json
 import os
 from pathlib import Path
-import resource
+try:
+    import resource
+except ImportError:  # Windows can run unit checks; actual archive worker is Linux.
+    resource=None
 import secrets
 import struct
 import subprocess
@@ -61,12 +65,60 @@ def inventory(connection):
 
 def pg_environment(url):
     url=make_url(url)
-    return {**os.environ,'PGHOST':url.host or '', 'PGPORT':str(url.port or 5432),'PGDATABASE':url.database or '', 'PGUSER':url.username or '', 'PGPASSWORD':url.password or '', 'PGCONNECT_TIMEOUT':'10','PGOPTIONS':'-c timezone=UTC'}
+    # No inherited PG/service files or unrelated application/privileged secrets.
+    env={k:os.environ[k] for k in ('PATH','LANG','LC_ALL','SYSTEMROOT') if k in os.environ}
+    env.update({'PGHOST':url.host or '', 'PGPORT':str(url.port or 5432),'PGDATABASE':url.database or '', 'PGUSER':url.username or '', 'PGPASSWORD':url.password or '', 'PGCONNECT_TIMEOUT':'10','PGOPTIONS':'-c timezone=UTC'})
+    for option in ('sslmode','sslrootcert','sslcert','sslkey','sslcrl','channel_binding','target_session_attrs'):
+        if option in url.query: env['PG'+option.upper()]=url.query[option]
+    if set(url.query)-{'sslmode','sslrootcert','sslcert','sslkey','sslcrl','channel_binding','target_session_attrs'}:
+        raise ValueError('Unsupported database URL option; review backup transport')
+    return env
+
+
+def backup_engine(job_engine):
+    config=get_settings()
+    if not config.backup_source_url:
+        if config.app_env=='production': raise ValueError('Dedicated backup reader configuration required')
+        return job_engine
+    result=create_engine(config.backup_source_url,hide_parameters=True,pool_pre_ping=True)
+    try:
+        if (result.url.host,result.url.port or 5432,result.url.database)!=(job_engine.url.host,job_engine.url.port or 5432,job_engine.url.database):
+            raise ValueError('Backup reader must target the job database through the same private endpoint')
+        from app.database_security import verify
+        with result.connect() as c: verify(c,'backup')
+    except Exception:
+        result.dispose();raise
+    return result
+
+
+def independent(source, target, source_url, target_url):
+    """Prefer server proof; managed providers may require operator attestation.
+
+    Attestation is private infrastructure evidence, not a business setting. It
+    must bind both exact endpoints and independently verified provider IDs.
+    """
+    from sqlalchemy.exc import DBAPIError
+    try:
+        left=source.execute(text('select system_identifier from pg_control_system()')).scalar_one()
+        right=target.execute(text('select system_identifier from pg_control_system()')).scalar_one()
+        if left==right: raise ValueError('Restore cluster is not independent')
+        return
+    except DBAPIError:
+        source.rollback();target.rollback()
+    filename=get_settings().restore_independence_file
+    if not filename: raise ValueError('Managed restore independence requires operator-verified evidence')
+    proof=json.loads(Path(filename).read_text())
+    def endpoint(url): return {'host':url.host,'port':url.port or 5432,'database':url.database}
+    if (proof.get('source')!=endpoint(source_url) or proof.get('target')!=endpoint(target_url)
+        or not proof.get('source_provider_id') or not proof.get('target_provider_id')
+        or proof['source_provider_id']==proof['target_provider_id'] or proof.get('independence_verified') is not True):
+        raise ValueError('Restore independence evidence does not match')
 
 
 def command(args,url,input=None):
     # Anonymous tmpfs files; no plaintext dump in persistent storage or logs.
     limit=get_settings().backup_max_bytes
+    if resource is None: raise ValueError('Bounded backup execution requires the Linux operations image')
     def bounded():resource.setrlimit(resource.RLIMIT_FSIZE,(limit,limit))
     with tempfile.TemporaryFile(dir='/dev/shm') as output:
         subprocess.run(args,input=input,stdout=output,stderr=subprocess.DEVNULL,env=pg_environment(url),timeout=180,check=True,preexec_fn=bounded)
@@ -98,28 +150,43 @@ def create_backup(identifier,source_engine=engine):
     return hashlib.sha256(encrypted).hexdigest(),len(encrypted)
 
 
-def restore_test(job,source_engine=engine):
+def restore_test(job,source_engine=engine,job_engine=None):
     config=get_settings();url=make_url(config.restore_test_url)
-    if not url.database or url.database!='postgres' or not url.host or url.host==source_engine.url.host:raise ValueError('Restore isolation unavailable')
-    control=create_engine(url)
+    precreated=getattr(config,'restore_target_mode','create_database')=='precreated'
+    if not url.database or not url.host or (url.host,url.port or 5432)==(source_engine.url.host,source_engine.url.port or 5432):raise ValueError('Restore isolation unavailable')
+    if (not precreated and url.database!='postgres') or (precreated and not url.database.startswith('isave_restore_')):raise ValueError('Restore target name refused')
+    control=create_engine(url,hide_parameters=True,connect_args={'connect_timeout':10})
+    target_guard=None
     try:
-        with source_engine.connect() as source,control.connect() as target:
-            if source.execute(text('select system_identifier from pg_control_system()')).scalar()==target.execute(text('select system_identifier from pg_control_system()')).scalar():raise ValueError('Restore cluster is not independent')
+        target_guard=control.connect()
+        if not target_guard.execute(text('SELECT pg_try_advisory_lock(7341592620)')).scalar():raise ValueError('Restore target already in use')
+        with source_engine.connect() as source:
+            independent(source,target_guard,source_engine.url,url)
+            if precreated and target_guard.execute(text("SELECT EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname NOT LIKE 'pg_toast%' AND c.relkind IN ('r','p','v','m','S'))")).scalar():
+                raise ValueError('Precreated restore target is not empty; never overwrite')
+            if precreated and target_guard.execute(text("SELECT EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public') OR EXISTS(SELECT 1 FROM pg_namespace WHERE nspname NOT IN ('public','information_schema') AND nspname NOT LIKE 'pg_%')")).scalar():
+                raise ValueError('Precreated restore target is not empty; never overwrite')
         file=archive_path(job.backup_id)
         if file.stat().st_size>config.backup_max_bytes+1024*1024:raise ValueError('Archive limit')
         encrypted=file.read_bytes()
-        with Session(source_engine) as db:
+        with Session(job_engine or source_engine) as db:
             backup=db.get(BackupJob,job.backup_id)
             if not backup or backup.state!='Succeeded' or backup.checksum!=hashlib.sha256(encrypted).hexdigest():raise ValueError('Archive checksum mismatch')
         payload=unseal(encrypted,key());length=struct.unpack('!I',payload[:4])[0]
         if length>len(payload)-4:raise ValueError('Manifest format')
         manifest=json.loads(payload[4:4+length]);dump=payload[4+length:]
         if manifest['dump_sha256']!=hashlib.sha256(dump).hexdigest():raise ValueError('Dump checksum mismatch')
-        name='isave_restore_'+str(job.id)+'_'+uuid4().hex[:12]
-        with psycopg.connect(**{k:v for k,v in {'host':url.host,'port':url.port or 5432,'user':url.username,'password':url.password,'dbname':'postgres'}.items() if v is not None},autocommit=True) as c:c.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(name)))
+        name=url.database if precreated else 'isave_restore_'+str(job.id)+'_'+uuid4().hex[:12]
+        if not precreated:
+            # libpq receives the same TLS options as SQLAlchemy, without a DSN
+            # or password in process arguments or exception output.
+            env=pg_environment(url)
+            options={k[2:].lower():v for k,v in env.items() if k.startswith('PG') and k not in {'PGOPTIONS','PGCONNECT_TIMEOUT','PGDATABASE'}}
+            options['dbname']=url.database;options['connect_timeout']=10
+            with psycopg.connect(**options,autocommit=True) as c:c.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(name)))
         target_url=url.set(database=name)
         command(['pg_restore','--no-owner','--no-acl','--exit-on-error','--dbname='+name],target_url,dump)
-        restored=create_engine(target_url)
+        restored=create_engine(target_url,hide_parameters=True,connect_args={'connect_timeout':10})
         try:
             with restored.connect() as c:
                 c.execute(text("SET TIME ZONE 'UTC'"))
@@ -131,7 +198,14 @@ def restore_test(job,source_engine=engine):
         finally:restored.dispose()
         # Target retained for controlled operator inspection. Never overwrite/drop it.
         return name
-    finally:control.dispose()
+    finally:
+        # Session-level target lock spans pg_restore and verification. A second
+        # job never races the empty-target check or overwrites a partial restore.
+        if target_guard is not None:
+            target_guard.rollback()
+            target_guard.execute(text('SELECT pg_advisory_unlock(7341592620)'));target_guard.commit()
+            target_guard.close()
+        control.dispose()
 
 
 def schedule(db):
@@ -161,10 +235,14 @@ def process_one(source_engine=engine):
                 if not job:return False
                 job.state='Running';db.commit()
                 try:
-                    if job.kind=='backup':job.checksum,job.size=create_backup(job.id,source_engine)
-                    else:
-                        target=restore_test(job,source_engine)
-                        operations.event(db,None,'restore_verified',job.id,{'isolated_target':target,'database_and_documents_match':True},'restored:'+str(job.id))
+                    reader=backup_engine(source_engine)
+                    try:
+                        if job.kind=='backup':job.checksum,job.size=create_backup(job.id,reader)
+                        else:
+                            target=restore_test(job,reader,job_engine=source_engine)
+                            operations.event(db,None,'restore_verified',job.id,{'isolated_target':target,'database_and_documents_match':True},'restored:'+str(job.id))
+                    finally:
+                        if reader is not source_engine:reader.dispose()
                     job.state='Succeeded';job.reason='Encrypted local archive verified' if job.kind=='backup' else 'Independent restore records and document checksums match'
                 except Exception:
                     db.rollback();job=db.get(BackupJob,job.id);job.state='Failed';job.reason='Operation failed safely. Authorised operator must check key, storage, capacity, database tools and isolated target; no live restore occurred.'

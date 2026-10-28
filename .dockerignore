@@ -52,3 +52,5 @@ deploy/**
 !deploy/validate-frontend.d.mts
 deploy-secrets/**
 .gateway-private/**
+.venv/**
+.database-security-private/**

@@ -1,0 +1,16 @@
+## Match the operations image's PostgreSQL major version. A newer pg_restore
+## emits server settings (for example transaction_timeout in v17) that v16
+## cannot accept, even when the source database itself is v16.
+FROM postgres:16-bookworm
+RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv && rm -rf /var/lib/apt/lists/*
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH" PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+WORKDIR /app/backend
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY app ./app
+COPY alembic ./alembic
+COPY tests ./tests
+COPY alembic.ini ./
+ENTRYPOINT []
+CMD ["python", "-m", "pytest", "-q", "--tb=short"]

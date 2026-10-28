@@ -265,3 +265,183 @@ The isolated database held no financial source records after the checks. A contr
 **Activation remains separate:** schema0018 is sufficient; no new migration exists. Matching frontend/backend deployment and the hosted configuration/tier/mode require a later explicit activation instruction. Provider networking/TLS acceptance, production policies, legal wording, account email, recovery infrastructure and least-privilege/audit protection remain blockers. There are no unresolved unexpected failures in the final checks, but the skips and unrun production checks above remain limitations.
 
 **Next implementation task:** least-privilege database and audit hardening: separate runtime/migration/backup identities, global audit tamper protection, and backup/restore compatibility tests against the selected PostgreSQL service. Off-site recovery/key custody, approved legal/collection wording, production account email and actual operational acceptance remain separate launch gates.
+
+## Database privilege and audit hardening — implementation checkpoint (superseded by activation below)
+
+This addendum supersedes the preceding **next-task** recommendation, without
+rewriting its historical validation. See [database-security-runbook.md](database-security-runbook.md)
+for the exact privilege matrix, provisioning, migration, managed-provider limits,
+credential rotation, independent restore and proposed activation procedure.
+
+Implemented changes:
+
+- Separate NOLOGIN schema owner, explicit migration login, API, account worker,
+  subscription scheduler, operations-job worker and read-only backup identities.
+  Hosted startup checks effective privileges, membership, ownership, function
+  exposure, UTC sessions and audit guards. A privileged session cannot disguise
+  itself with SET ROLE. New tables require reviewed grants, not automatic DML.
+- Migration0019 protects global audit against UPDATE/DELETE/TRUNCATE with ALWAYS
+  triggers and preserves actor foreign keys using RESTRICT. Runtime grants add a
+  separate denial layer. Audit ORM details redact structured credential fields
+  and URLs; original history is not rewritten. System events retain explicit
+  provenance and null staff identities. Privileged owners/infrastructure remain
+  outside this tamper-resistance boundary; external integrity evidence is absent.
+- Hosted Compose mounts migration credentials only in maintenance. A prepared
+  local activation overlay clears inherited privileged URLs and API automatic
+  migration while preserving normal storage/network/business settings. Neither
+  configuration has been activated normally.
+- Backup jobs and full-data reading use different source connections. Verified
+  TLS options survive PostgreSQL client execution. Managed recovery supports an
+  independently prepared empty target owned by a non-superuser without CREATEDB;
+  existing/nonempty targets cannot be overwritten. Restricted providers require
+  private, endpoint-bound operator evidence of independent resource identities.
+
+**Current normal-state evidence limit:** Docker's Linux engine and the normal
+PostgreSQL/frontend/Mailpit TCP endpoints were unavailable at the start of this
+work. They were not started. The earlier report's normal-superuser/no-audit-trigger
+finding remains historical evidence, not a fresh privilege inspection. No normal
+SQL, privilege, migration, credential, account, document, policy or service change
+was made. A fresh read-only normal inventory is required before activation.
+
+Actual-role testing instead uses two separately initialised persistent portable
+PostgreSQL16 clusters, random private credentials and loopback-only test ports.
+They are not normal databases, Windows services or hosted infrastructure. This
+proves PostgreSQL cluster isolation, not physical off-site resilience. Synthetic
+data and encrypted recovery evidence stay private and excluded from Git/builds.
+The equivalent persistent Docker test definition is prepared; Docker-image and
+selected-provider acceptance remain unrun while the engine/provider is absent.
+
+Validation and closure are recorded below. R7 remains
+a launch blocker for the normal installation until approved migration/credential
+cutover and independent acceptance. R4–R6, R8–R9 and remaining R10–R12 obligations
+are not waived: privacy/legal/collection approval, production account email,
+off-site recovery/key custody/alerts, actual staff/finance coverage, operational
+policies and hosted security/acceptance remain required.
+
+### Validation results and limits
+
+| Run | Passed | Failed | Skipped | Scope |
+| --- | ---: | ---: | ---: | --- |
+| Frozen full backend regression | 798 | 0 | 11 | Real isolated PostgreSQL16, original pytest exit0. Includes actual-login role denials, non-superuser provisioning/migration, concurrent provisioning/audit/subscriptions, restricted API financial posting/reversal and encrypted independent restore. |
+| Final affected backend | 138 | 0 | 0 | Final column-restricted account-worker matrix, successful recovery and mocked campaign dispatch, denied snapshot/actor edits, audit protections, gateway/configuration and migration checks; original pytest exit0. |
+| Earlier broad affected backend | 331 | 0 | 1 | Authentication, operations, lifecycle/startup, schema and role tests before the last worker restrictions; the skip is the existing real-ClamAV integration requirement. Counts overlap and are not additive. |
+| Offline deployment checks | 2 | 0 | 0 | Actual Compose parser with dummy file paths: hosted credential mounts and prepared normal overlay. No expanded secrets/configuration printed and no services started. |
+| Persistence/recovery closure | Passed | 0 | — | Both71-table inventories and private-document hashes unchanged after controlled restart; retained encrypted synthetic archive matches its checksum and independently restored manifest. Only portable test processes subsequently stopped. |
+
+The full run preceded the last account-worker column reduction and five extra
+focused cases. The final affected run covers that final change; another full
+collection after it was not repeated. Ten full-run skips are SQLite-only
+concurrency variants whose PostgreSQL counterparts ran. One skip needs a real
+private ClamAV container, unavailable with Docker stopped. A mocked campaign
+transport proves worker privileges/state transitions, **not a new Mailpit capture
+or external email delivery**. No Mailpit service was started.
+
+Diagnostic runs are retained privately: an initial PostgreSQL run found four
+equivalent-instant UTC versus UTC+02 retry-response differences. Explicit UTC role
+sessions and matching disposable bootstrap configuration resolved them. A later
+run hit two stale settings-class instances because source changed during that
+run; the subsequent frozen full run passed. The remaining warning is the existing
+Starlette TestClient/httpx deprecation, not a failed test.
+
+The exploratory full Windows/SQLite run was **653 passed, 26 failed, 106 skipped**,
+before the migration-head/preflight corrections. Five representative bootstrap,
+publication/retry, enrolment and withdrawal failures were independently reproduced
+against unmodified HEAD in a private copy: existing SQLite transaction/timezone
+limitations, not proof of PostgreSQL failure. Migration adoption/downgrade
+preflights and current SQLite lifecycle checks then passed in the broad affected
+run. A new all-SQLite full collection was not repeated, and existing SQLite
+timezone/transaction parity issues remain unresolved; do not describe that suite
+as passing.
+
+Unrun here: Linux image builds/bounded-tmpfs backup execution, fresh browser/UI,
+frontend/TypeScript builds (no frontend changes), real scanner/Mailpit integration,
+managed-provider networking/role/TLS acceptance, and all normal activation checks.
+Windows archive acceptance used actual PostgreSQL dump/restore and encryption
+with a test-only subprocess adapter; it does not prove Linux resource limits.
+The managed-style test uses a non-superuser with explicit role ADMIN/SET and
+database ownership authority; it is not a Render deployment test.
+
+**Closure:** final synthetic privilege inventories, regression diagnostics,
+encrypted archive and test key custody evidence are private and excluded from
+Git/build contexts. Both portable clusters are stopped with their directories
+retained. Normal Docker services were never started, restarted or reconfigured;
+normal credentials, data, business grants, documents and the intentionally
+untracked evidence folders were not changed. No normal backup/migration/privilege
+cutover was attempted, and no push, merge or external sending occurred.
+
+**Exact next task:** obtain explicit approval for a controlled normal database
+security activation: fresh read-only identity/grant/service inventory, private
+backup plus independent restore/preservation checks, migration0019, reviewed
+ownership/grant changes, private per-service credentials and only the necessary
+API/worker cutover. Preserve each recorded service state, including stopped
+Mailpit. Do not perform destructive denial tests on normal audit data; use the
+read-only verifier after isolated negative acceptance. Selected-provider
+compatibility and the remaining email/off-site/privacy gates follow separately.
+
+
+## Controlled normal database-security activation ? 27 October 2026
+
+This supersedes the preceding prepared-only database-security status and its
+normal-activation next task. The owner explicitly authorised this cutover.
+[Complete evidence, operating commands and rollback](database-security-activation.md)
+are recorded separately; [role responsibilities](database-security-runbook.md)
+remain the deployment contract.
+
+**Result: local normal activation passed.** Fresh inspection confirmed the old
+superuser application role, 71 owner-held tables, schema0018 and no global audit
+protection triggers. After isolated acceptance, a private encrypted backup,
+independent restore and0019 rehearsal, only normal API/account/operations writers
+were quiesced. Frozen-source preservation passed before migration. The normal
+schema is now `0019_database_audit`; NOLOGIN `isave_owner` owns application objects,
+and each runtime authenticates directly as its restricted purpose role.
+Migration credentials are absent from runtime containers; API startup does not
+migrate. Existing application accounts, grants/overrides, sessions, private
+files, accepted terms, policies and financial records matched pre-cutover row,
+document and sequence fingerprints, with only the Alembic revision changed.
+
+| Check | Passed | Failed | Skipped | Evidence/scope |
+| --- | ---: | ---: | ---: | --- |
+| Corrected full Linux PostgreSQL regression | 803 | 0 | 11 | Original pytest exit0; PostgreSQL16, production operations/test Python3.11 toolchain. |
+| Corrected affected actual-role suite | 91 | 0 | 0 | Non-additive subset; separate authentication, denied DDL/audit tampering, worker scope, races, restricted backup/restore. |
+| Linux tmpfs/file-size refusal | Passed | 0 | 0 | Actual bounded subprocess execution and oversized-output failure, no normal target. |
+| Normal backup/restore/migration rehearsal | Passed | 0 | 0 | Encrypted snapshot, distinct cluster identifiers, row/document/sequence agreement and successful0019/role rehearsal. |
+| Actual normal cutover and runtime verification | Passed | 0 | 0 | API/account/operations/backup role checks; scheduler startup without generating obligations; runtime secret isolation. |
+| Post-cutover restricted backup/recovery | Passed | 0 | 0 | Read-only source login and independent nonsuperuser restore; retained copy plus next empty target prepared. |
+| HTTP smoke and service preservation | Passed | 0 | 0 | Homepage/ready/public contacts200; anonymous identity/Admin401; unchanged frontend/database/scanner/recovery starts and stopped Mailpit. |
+
+The first Linux collection was802passed/1failed/11skipped (exit1), preserved as
+historical evidence. The failure was the test image installing PostgreSQL17
+client tools: restore emitted `transaction_timeout`, unsupported by server16.
+A synthetic independent reproduction confirmed it. The image now matches the
+operations PostgreSQL16 toolchain; the corrected affected and full collections
+above passed before normal cutover. Five extra role-boundary checks explain the
+change from the earlier798-pass full suite to803. The11skips are10SQLite-only
+concurrency variants (PostgreSQL counterparts ran) and opt-in real ClamAV
+integration. Existing all-SQLite parity failures are not claimed fixed.
+
+Normal API, account worker and operations worker were the only services recreated;
+operations alone was subsequently restarted to load its next empty recovery
+endpoint. API/frontend/database/scanner are healthy; workers/recovery are running
+without startup or permission errors. Mailpit remains stopped. No external mail,
+policy publication, test-clock/scanner/fixture promotion or normal synthetic
+transaction occurred. Both isolated Linux projects are stopped, their persistent
+volumes retained, and privileged one-off maintenance containers removed. Private
+archives, keys and evidence remain excluded from Git/build contexts; intentionally
+untracked evidence folders were untouched. Nothing pushed or merged.
+
+Frontend/browser/TypeScript checks were not repeated for database-only activation.
+Required API/account/operations image builds, the PowerShell Compose helper syntax
+and actual execution, and diff whitespace checks passed. Managed-provider role,
+private-network/TLS and real hosted backup acceptance remain unrun; these local
+results do not prove Render/provider compatibility or independent off-site storage.
+Normal launch mode, withdrawal availability and all business settings are unchanged.
+
+**Remaining launch gates:** provider/network/TLS acceptance; an implemented and
+approved production account-email adapter/sender; independent encrypted off-site
+backup custody, RPO/RTO and alerts; remaining business/privacy/legal approvals;
+and the outstanding capacity/security/accessibility acceptance listed earlier.
+Local database/audit least privilege is no longer an unactivated blocker. Next
+infrastructure task is selected-provider staging acceptance of this exact role,
+network/TLS, persistence and independent recovery layout, after the owner chooses
+the provider and recovery custody/objectives. No hosting provisioning or external
+sending is authorised by this activation.

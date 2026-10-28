@@ -11,8 +11,8 @@ def log_event(
     *,
     event_type: str,
     action: str,
-    actor_user_id: Optional[int] = None,
-    actor_email: Optional[str] = None,
+    actor=None,
+    system_source: Optional[str] = None,
     target_table: Optional[str] = None,
     target_id: Optional[str] = None,
     details: Optional[dict[str, Any]] = None,
@@ -20,19 +20,23 @@ def log_event(
 ) -> AuditEvent:
     import json
 
+    if (actor is None) == (system_source is None):
+        raise ValueError('Provide a server-authenticated actor or explicit system source')
+    if system_source:
+        details={**(details or {}),'system_source':system_source}
+
     event = AuditEvent(
         event_type=event_type,
         action=action,
-        actor_user_id=actor_user_id,
-        actor_email=actor_email,
+        actor_user_id=actor.id if actor else None,
+        actor_email=actor.email if actor else None,
         target_table=target_table,
         target_id=target_id,
         details=json.dumps(details, default=str) if details is not None else None,
         ip_address=ip_address,
     )
     db.add(event)
-    db.commit()
-    db.refresh(event)
+    db.flush()  # caller owns the transaction; audit cannot commit financial work early
     return event
 
 

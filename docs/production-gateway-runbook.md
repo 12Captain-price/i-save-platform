@@ -62,7 +62,9 @@ Set non-secret values through the host's protected deployment configuration. Pro
 | `STAGING_PUBLIC_ORIGIN` | Approved canonical HTTPS origin, optionally including the staging port; no trailing path/query/fragment, localhost or test-domain public links. DNS and TLS certificate must match. |
 | `STAGING_LAUNCH_MODE` | Explicit `informational`, `applications` or `full`; safe fallback informational. Owner decision, not inferred from test success. |
 | `STAGING_BIND`, HTTP/HTTPS ports | Defaults bind only127.0.0.1 at13081/13443. A hosted operator must explicitly choose interface/80/443 and firewall rules; nothing here exposes the laptop publicly. |
-| `STAGING_DATABASE_URL_FILE` | Private PostgreSQL DSN file for the isolated hosted database. Use provider private networking and verified database TLS where applicable. No normal DSN, SQLite, localhost DB, test/rehearsal database or placeholder password. Runtime least-privilege migration/backup identities are a separate readiness task. |
+| `STAGING_{API,MIGRATION,ACCOUNT,SUBSCRIPTION,OPERATIONS}_DATABASE_URL_FILE` | Separate private DSN files for each purpose, all targeting the same dedicated database. Only the maintenance service receives the migration credential. Follow [database security provisioning](database-security-runbook.md) before starting the current images. Use provider private networking and verified database TLS; no normal DSN, SQLite, localhost DB, fixtures or placeholder password in a hosted profile. |
+| `STAGING_BACKUP_SOURCE_URL_FILE` | Read-only `isave_backup_reader` DSN; mounted only in operations, distinct from its restricted job connection. |
+| `STAGING_RESTORE_TARGET_MODE`, `STAGING_RESTORE_INDEPENDENCE_FILE` | Preferred mode `precreated`: empty independent `isave_restore_*` target with its own restore owner. Private endpoint-bound operator evidence is required where the provider restricts system-identifier queries. See the database security runbook; no live overwrite. |
 | `STAGING_APPLICATION_KEY_FILE` | Independent random application secret, at least32characters; never the development placeholder. |
 | `STAGING_GATEWAY_TOKEN_FILE` | Independent random URL-safe service credential,32–128characters, shared only by gateway/Node/API workers. |
 | `STAGING_TLS_CERT_FILE`, `STAGING_TLS_KEY_FILE` | Approved certificate chain and private key files. Certificate renewal/rotation is an infrastructure responsibility. Self-signed certificates are only for the isolated local rehearsal. |
@@ -98,7 +100,7 @@ docker compose -f compose.staging.yaml --profile maintenance run --rm migrate
 docker compose -f compose.staging.yaml up -d
 ```
 
-Before any existing/normal database migration: separately authorise activation, take the private encrypted backup, independently restore and verify preservation. **No new migration is required for this code change.** It expects the existing0018 schema. No normal migration or restart was performed.
+Before any existing/normal database migration: separately authorise activation, take the private encrypted backup, independently restore and verify preservation. The historical gateway milestone required schema0018 and performed no normal migration/restart. **The current database-security change requires0019 plus explicit role preparation/provisioning**, separate per-process DSNs and the activation procedure in [database-security-runbook.md](database-security-runbook.md). Do not run the current backend against0018 or mount a migration credential in its runtime.
 
 When operations prerequisites are complete:
 
@@ -126,4 +128,4 @@ The isolated projects are now stopped with persistent storage retained. All eigh
 
 Passing these tests does **not** establish production readiness. Remaining blockers include approved public/legal copy and collection lifecycle, least-privilege database/audit protection, off-site recovery/key custody/alerts, a production account-email adapter, approved actual operational policies/roles, capacity/accessibility/security scanning and acceptance on the chosen hosted network.
 
-**Next implementation task:** least-privilege database and audit hardening, with separate runtime/migration/backup identities and compatibility tests for the selected managed PostgreSQL/restore target. Keep provider email and recovery infrastructure as explicit following release gates; do not treat launch mode `full` as satisfying them.
+**Current follow-up (27 October 2026):** database/audit hardening completed its owner-authorised local normal cutover to0019. See [activation evidence and rollback](database-security-activation.md). This supersedes the earlier no-normal-activation checkpoint for database security only; it does not activate a hosted deployment. Selected-provider compatibility/TLS acceptance, production email and independently stored off-site recovery remain explicit gates; launch mode `full` satisfies none of them.

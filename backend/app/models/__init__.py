@@ -50,3 +50,4 @@ import app.models.account_workflows
 import app.models.content_support
 import app.models.campaign
 import app.models.operations
+import app.security.audit_data  # register audit detail protection for every ORM writer

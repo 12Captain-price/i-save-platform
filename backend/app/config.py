@@ -29,6 +29,13 @@ class Settings(BaseSettings):
     gateway_token: str = Field(default='',repr=False)
     gateway_token_file: str = ''
     database_url_file: str = ''
+    database_purpose: Literal['api','account','subscriptions','operations','backup','migrator'] = 'api'
+    database_security_enforced: bool = False
+    database_migration_role: Literal['','isave_owner'] = ''
+    backup_source_url: str = Field(default='',repr=False)
+    backup_source_url_file: str = ''
+    restore_independence_file: str = ''
+    restore_target_mode: Literal['create_database','precreated'] = 'create_database'
     secret_key_file: str = ''
     app_name: str = "i-Save Backend"
     app_debug: bool = True
@@ -66,7 +73,7 @@ class Settings(BaseSettings):
         return self.launch_mode or ('informational' if self.app_env == 'production' else 'full')
 
     def validate_runtime(self):
-        for name in ('database_url', 'secret_key', 'gateway_token','restore_test_url'):
+        for name in ('database_url', 'secret_key', 'gateway_token','restore_test_url','backup_source_url'):
             filename = getattr(self, name + '_file')
             if filename:
                 try: setattr(self, name, Path(filename).read_text().strip())
@@ -74,6 +81,8 @@ class Settings(BaseSettings):
         if self.app_env != 'production': return self
         from sqlalchemy.engine import make_url
         def fail(): raise RuntimeError('Unsafe production configuration; consult the deployment runbook') from None
+        if self.database_purpose!='migrator' and self.database_migration_role: fail()
+        if self.database_purpose=='migrator' and self.database_migration_role!='isave_owner': fail()
         try:
             origin = urlsplit(self.public_origin)
             origin.port

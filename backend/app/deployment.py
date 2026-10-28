@@ -36,5 +36,8 @@ def check_deployment_data(connection, settings=None):
 
 def validate_deployment_data(engine):
     settings=get_settings()
+    if settings.app_env=='production' or getattr(settings,'database_security_enforced',False):
+        from app.database_security import verify
+        with engine.connect() as connection: verify(connection,settings.database_purpose)
     if settings.app_env=='production' and settings.deployment_tier=='production':
         with engine.connect() as connection:check_deployment_data(connection,settings)

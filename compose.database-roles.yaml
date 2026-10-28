@@ -1,0 +1,69 @@
+# Purpose-specific normal overlay. Local activation completed 27 October 2026.
+# A new installation still requires approved backup/restore, provisioning and
+# migration0019 before cutover. Apply LAST to the documented normal files.
+# Does not change database volumes, frontend, scanner, Mailpit or launch mode.
+services:
+  backend:
+    # Remove the old auto-migration entrypoint and inherited privileged URL.
+    command: [uvicorn, app.main:app, --host, 0.0.0.0, --port, '8000', --no-proxy-headers]
+    environment:
+      DATABASE_URL: ''
+      DATABASE_URL_FILE: /run/secrets/database_url
+      DATABASE_PURPOSE: api
+      DATABASE_SECURITY_ENFORCED: 'true'
+    secrets: [{source: local_api_dsn, target: database_url}]
+  account-worker:
+    environment:
+      DATABASE_URL: ''
+      DATABASE_URL_FILE: /run/secrets/database_url
+      DATABASE_PURPOSE: account
+      DATABASE_SECURITY_ENFORCED: 'true'
+    secrets: [{source: local_account_dsn, target: database_url}]
+  operations-worker:
+    environment:
+      DATABASE_URL: ''
+      RESTORE_TEST_URL: ''
+      DATABASE_URL_FILE: /run/secrets/database_url
+      DATABASE_PURPOSE: operations
+      DATABASE_SECURITY_ENFORCED: 'true'
+      BACKUP_SOURCE_URL_FILE: /run/secrets/backup_source_url
+      RESTORE_TEST_URL_FILE: /run/secrets/restore_target_url
+      RESTORE_TARGET_MODE: precreated
+      RESTORE_INDEPENDENCE_FILE: /run/secrets/restore_independence
+    secrets:
+      - {source: local_operations_dsn, target: database_url}
+      - {source: local_backup_dsn, target: backup_source_url}
+      - {source: local_restore_dsn, target: restore_target_url}
+      - {source: local_restore_independence, target: restore_independence}
+  migrate:
+    build: ./backend
+    profiles: [maintenance]
+    restart: 'no'
+    command: [python, -m, app.migrations, upgrade]
+    environment:
+      APP_ENV: development
+      DATABASE_URL_FILE: /run/secrets/database_url
+      DATABASE_PURPOSE: migrator
+      DATABASE_MIGRATION_ROLE: isave_owner
+    secrets: [{source: local_migration_dsn, target: database_url}]
+  subscription-schedule:
+    build: ./backend
+    profiles: [scheduled]
+    restart: 'no'
+    command: [python, -m, app.subscription_schedule]
+    environment:
+      APP_ENV: development
+      DATABASE_URL_FILE: /run/secrets/database_url
+      DATABASE_PURPOSE: subscriptions
+      DATABASE_SECURITY_ENFORCED: 'true'
+      LAUNCH_MODE: ${LAUNCH_MODE:-full}
+    secrets: [{source: local_subscription_dsn, target: database_url}]
+secrets:
+  local_api_dsn: {file: '${DB_API_URL_FILE_HOST:?Private API DSN required}'}
+  local_account_dsn: {file: '${DB_ACCOUNT_URL_FILE_HOST:?Private account worker DSN required}'}
+  local_subscription_dsn: {file: '${DB_SUBSCRIPTION_URL_FILE_HOST:?Private scheduler DSN required}'}
+  local_operations_dsn: {file: '${DB_OPERATIONS_URL_FILE_HOST:?Private operations DSN required}'}
+  local_backup_dsn: {file: '${DB_BACKUP_URL_FILE_HOST:?Private backup reader DSN required}'}
+  local_migration_dsn: {file: '${DB_MIGRATION_URL_FILE_HOST:?Private migration DSN required}'}
+  local_restore_dsn: {file: '${DB_RESTORE_URL_FILE_HOST:?Private empty restore target DSN required}'}
+  local_restore_independence: {file: '${DB_RESTORE_INDEPENDENCE_FILE_HOST:?Private independence evidence required}'}

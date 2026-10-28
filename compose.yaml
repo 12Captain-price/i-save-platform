@@ -8,6 +8,10 @@
 #   db        - PostgreSQL (localhost:5432, bound to localhost only)
 #
 # Usage:
+#   An existing normal installation activated with database hardening must use
+#   scripts/normal-compose.ps1 and its private environment file. Do not omit
+#   compose.database-roles.yaml or restore privileged runtime DATABASE_URL values.
+#   The simple commands below are for a fresh, unactivated development stack.
 #   cp .env.example .env        # adjust values if desired
 #   docker compose up -d
 #

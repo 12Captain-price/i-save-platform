@@ -52,6 +52,9 @@ def create_legacy_schema(database):
         table.to_metadata(original)
     for name in ("created_at", "updated_at"):
         original.tables["member_plans"]._columns.remove(original.tables["member_plans"].columns[name])
+    for fk in original.tables['audit_events'].foreign_key_constraints:
+        fk.ondelete='SET NULL'
+        for element in fk.elements: element.ondelete='SET NULL'
     original.create_all(database)
 
 

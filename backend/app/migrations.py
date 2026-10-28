@@ -5,7 +5,7 @@ Baseline is read-only unless --apply is given and never changes business rows.
 """
 import argparse
 import re
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 
 from alembic import command
@@ -14,14 +14,14 @@ from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from sqlalchemy import inspect, text, UniqueConstraint, MetaData, CheckConstraint
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Engine, Connection
 
 from app.database import Base, engine
 import app.models  # noqa: F401
 
 
 INITIAL_REVISION = "0001_initial_schema"
-ADOPTION_HEAD = "0018_operations"
+ADOPTION_HEAD = "0019_database_audit"
 AUTH_TABLES = {"auth_sessions", "user_permissions", "login_throttles", "registration_submissions", "application_events", "savings_interests", "application_submissions", "application_registration_payments", "membership_approvals", "password_setup_invitations", "plan_drafts", "plan_draft_versions", "business_settings_versions", "business_settings_publications", "application_settings_snapshots", "subscription_settings_snapshots", "fee_rate_versions", "fee_rate_publications", "fee_obligations", "subscription_fee_payments"}
 AUTH_TABLES |= {'savings_contributions','savings_events','savings_ledger_entries'}
 AUTH_TABLES |= {'withdrawal_requests','withdrawal_events','withdrawal_payouts','withdrawal_debits'}
@@ -44,7 +44,7 @@ def migration_config(connection=None) -> Config:
 def require_current_schema(database: Engine, *, verify_structure: bool = True) -> None:
     """Read-only startup gate; never create or adopt tables inside the API."""
     heads = set(ScriptDirectory.from_config(migration_config()).get_heads())
-    with database.connect() as connection:
+    with (nullcontext(database) if isinstance(database, Connection) else database.connect()) as connection:
         current = set(MigrationContext.configure(connection).get_current_heads())
         tables = set(inspect(connection).get_table_names())
         differences = (
@@ -68,6 +68,13 @@ def require_current_schema(database: Engine, *, verify_structure: bool = True) -
             elif connection.dialect.name=='sqlite':
                 names=set(connection.execute(text("SELECT name FROM sqlite_master WHERE type='trigger' AND tbl_name IN ('withdrawal_events','withdrawal_debits')")).scalars())
                 if names!={'withdrawal_events_no_update','withdrawal_events_no_delete','withdrawal_debits_no_update','withdrawal_debits_no_delete'}:differences.append('Withdrawal integrity triggers differ')
+        if verify_structure and current==heads and 'audit_events' in tables:
+            if connection.dialect.name=='postgresql':
+                names=set(connection.execute(text("SELECT tgname FROM pg_trigger WHERE tgrelid='public.audit_events'::regclass AND tgenabled='A'")).scalars())
+                if not {'audit_events_no_mutation','audit_events_no_truncate','audit_events_worker_scope'}<=names: differences.append('Audit integrity triggers differ')
+            elif connection.dialect.name=='sqlite':
+                names=set(connection.execute(text("SELECT name FROM sqlite_master WHERE type='trigger' AND tbl_name='audit_events'")).scalars())
+                if not {'audit_events_no_update','audit_events_no_delete'}<=names: differences.append('Audit integrity triggers differ')
     if current != heads or not set(Base.metadata.tables).issubset(tables):
         raise RuntimeError(
             "Database schema is not at the required Alembic revision. Run "
@@ -111,6 +118,11 @@ def schema_differences(connection, *, legacy: bool = False) -> list[str]:
             continue
         table.to_metadata(original_metadata)
     if legacy:
+        # Freeze the original audit FK; 0019 upgrades it explicitly after adoption.
+        for fk in original_metadata.tables['audit_events'].foreign_key_constraints:
+            if list(fk.column_keys)==['actor_user_id']:
+                fk.ondelete='SET NULL'
+                for element in fk.elements: element.ondelete='SET NULL'
         for name in ("created_at", "updated_at"):
             original_metadata.tables["member_plans"]._columns.remove(
                 original_metadata.tables["member_plans"].columns[name]
@@ -225,6 +237,13 @@ def migration_connection(database: Engine):
     with database.connect() as connection:
         # Serialise this CLI's migration/baseline commands across containers.
         postgres = connection.dialect.name == "postgresql"
+        from app.config import get_settings
+        settings=get_settings()
+        if settings.app_env=='production' and (settings.database_purpose!='migrator' or settings.database_migration_role!='isave_owner'):
+            raise RuntimeError('Hosted migrations require the dedicated migrator identity and schema-owner role')
+        if postgres and settings.database_migration_role:
+            connection.execute(text('SET ROLE isave_owner'))
+            connection.commit()
         if postgres:
             connection.execute(text("SELECT pg_advisory_lock(7341592601)"))
             connection.commit()
@@ -234,6 +253,7 @@ def migration_connection(database: Engine):
             if postgres:
                 connection.rollback()
                 connection.execute(text("SELECT pg_advisory_unlock(7341592601)"))
+                if settings.database_migration_role: connection.execute(text('RESET ROLE'))
                 connection.commit()
 
 
@@ -248,7 +268,7 @@ def upgrade(database: Engine = engine) -> None:
                 "'python -m app.migrations baseline' to inspect; nothing was changed."
             )
         command.upgrade(migration_config(connection), "head")
-    require_current_schema(database)
+        require_current_schema(connection)
 
 
 def baseline(database: Engine = engine, *, apply: bool = False) -> None:

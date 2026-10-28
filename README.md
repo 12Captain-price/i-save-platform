@@ -27,6 +27,15 @@ npm run dev
 
 ## Docker
 
+The existing normal installation activated database hardening on 27 October
+2026. Use [the activation runbook](docs/database-security-activation.md) and
+`scripts/normal-compose.ps1` with its private environment file; always include
+the role overlay last and name services explicitly. Bare Compose commands below
+are for a **fresh, unactivated development installation**, not that normal stack.
+Normal migrations use the dedicated maintenance identity, never the API service.
+Run regression tests in the standalone isolated test configuration, not normal
+PostgreSQL. Do not implicitly start Mailpit or overwrite existing volumes.
+
 The whole stack (frontend, backend, PostgreSQL) runs with Docker Compose — no Node.js or Python needed on the host:
 
 ```sh

@@ -53,7 +53,11 @@ alembic upgrade head
 This creates all tables defined by the SQLAlchemy models in the configured
 database (local SQLite by default).
 
-For normal setup and Docker startup, prefer `python -m app.migrations upgrade`.
+For fresh local setup, prefer `python -m app.migrations upgrade`.
+The activated normal Docker installation runs migrations only as its dedicated
+maintenance identity; API/worker startup has no migration credential. Follow
+[database security activation and recovery](../docs/database-security-activation.md)
+and retain the purpose-specific Compose overlay for subsequent service starts.
 The API never creates tables automatically. Existing untracked schemas must be
 backed up and explicitly checked before recording migration history; see
 [database operations](../docs/database-operations.md).

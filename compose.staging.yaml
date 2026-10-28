@@ -10,6 +10,7 @@ x-runtime: &runtime
   PASSWORD_SETUP_FRONTEND_URL: ${STAGING_PUBLIC_ORIGIN}
   CORS_ORIGINS: ${STAGING_PUBLIC_ORIGIN}
   DATABASE_URL_FILE: /run/secrets/database_url
+  DATABASE_PURPOSE: api
   SECRET_KEY_FILE: /run/secrets/application_key
   GATEWAY_TOKEN_FILE: /run/secrets/gateway_token
   DOCUMENT_SCAN_HOST: scanner
@@ -22,7 +23,10 @@ x-backend: &backend
   image: ${STAGING_PROJECT}-backend
   build: {context: ./backend, dockerfile: Dockerfile.hosted}
   environment: *runtime
-  secrets: [database_url, application_key, gateway_token]
+  secrets:
+    - {source: api_database_url, target: database_url}
+    - application_key
+    - gateway_token
   networks: [private_api, private_data, private_scan]
   restart: unless-stopped
 services:
@@ -64,15 +68,37 @@ services:
   migrate:
     <<: *backend
     profiles: [maintenance]
+    environment:
+      <<: *runtime
+      DATABASE_PURPOSE: migrator
+      DATABASE_MIGRATION_ROLE: isave_owner
+    secrets:
+      - {source: migration_database_url, target: database_url}
+      - application_key
+      - gateway_token
     command: [python, -m, app.migrations, upgrade]
     restart: 'no'
   account-worker:
     <<: *backend
     command: [python, -m, app.account_worker]
+    environment:
+      <<: *runtime
+      DATABASE_PURPOSE: account
+    secrets:
+      - {source: account_database_url, target: database_url}
+      - application_key
+      - gateway_token
   subscription-schedule:
     <<: *backend
     profiles: [scheduled]
     command: [python, -m, app.subscription_schedule]
+    environment:
+      <<: *runtime
+      DATABASE_PURPOSE: subscriptions
+    secrets:
+      - {source: subscription_database_url, target: database_url}
+      - application_key
+      - gateway_token
     restart: 'no'
   scanner:
     image: clamav/clamav:1.4@sha256:3bba6dd5ac6663d55b80f86a3126e146612d93b593cc2617188d13f637d91260
@@ -84,9 +110,20 @@ services:
     build: {context: ./backend, dockerfile: Dockerfile.operations}
     environment:
       <<: *runtime
+      DATABASE_PURPOSE: operations
+      BACKUP_SOURCE_URL_FILE: /run/secrets/backup_source_url
       BACKUP_KEY_FILE: /run/secrets/backup_key
       RESTORE_TEST_URL_FILE: /run/secrets/restore_url
-    secrets: [database_url, application_key, gateway_token, backup_key, restore_url]
+      RESTORE_TARGET_MODE: ${STAGING_RESTORE_TARGET_MODE:-precreated}
+      RESTORE_INDEPENDENCE_FILE: /run/secrets/restore_independence
+    secrets:
+      - {source: operations_database_url, target: database_url}
+      - backup_source_url
+      - application_key
+      - gateway_token
+      - backup_key
+      - restore_url
+      - restore_independence
     volumes: [encrypted_archives:/var/lib/isave-backups]
     shm_size: 512m
     networks: [private_data]
@@ -101,10 +138,16 @@ volumes:
   scanner_signatures: {}
   encrypted_archives: {}
 secrets:
-  database_url: {file: '${STAGING_DATABASE_URL_FILE:?Private DSN file required}'}
+  api_database_url: {file: '${STAGING_API_DATABASE_URL_FILE:?Private API DSN file required}'}
+  migration_database_url: {file: '${STAGING_MIGRATION_DATABASE_URL_FILE:?Private migration DSN file required}'}
+  account_database_url: {file: '${STAGING_ACCOUNT_DATABASE_URL_FILE:?Private account-worker DSN file required}'}
+  subscription_database_url: {file: '${STAGING_SUBSCRIPTION_DATABASE_URL_FILE:?Private subscription-worker DSN file required}'}
+  operations_database_url: {file: '${STAGING_OPERATIONS_DATABASE_URL_FILE:?Private operations-worker DSN file required}'}
+  backup_source_url: {file: '${STAGING_BACKUP_SOURCE_URL_FILE:?Private read-only backup DSN file required}'}
   application_key: {file: '${STAGING_APPLICATION_KEY_FILE:?Private key file required}'}
   gateway_token: {file: '${STAGING_GATEWAY_TOKEN_FILE:?Private gateway key file required}'}
   tls_certificate: {file: '${STAGING_TLS_CERT_FILE:?TLS certificate file required}'}
   tls_key: {file: '${STAGING_TLS_KEY_FILE:?TLS key file required}'}
   backup_key: {file: '${STAGING_BACKUP_KEY_FILE:?Private archive key file required}'}
   restore_url: {file: '${STAGING_RESTORE_URL_FILE:?Independent restore DSN file required}'}
+  restore_independence: {file: '${STAGING_RESTORE_INDEPENDENCE_FILE:?Private restore-independence evidence file required}'}

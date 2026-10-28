@@ -1,0 +1,48 @@
+# Standalone disposable acceptance; persistent storage, no published interfaces.
+services:
+  security-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: security_bootstrap
+      POSTGRES_PASSWORD: ${SECURITY_TEST_PASSWORD:?Private synthetic password required}
+      POSTGRES_DB: isave_test_regression
+    volumes: [security_pg:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U security_bootstrap -d isave_test_regression]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  tests:
+    build: {context: ./backend, dockerfile: Dockerfile.security-test}
+    environment:
+      APP_ENV: test
+      DATABASE_URL: sqlite:////tmp/security-unit.db
+      ISAVE_TEST_DATABASE_URL: postgresql+psycopg://security_bootstrap:${SECURITY_TEST_PASSWORD}@security-db/isave_test_regression
+      TEST_POSTGRES_URL: postgresql+psycopg://security_bootstrap:${SECURITY_TEST_PASSWORD}@security-db/postgres
+      ISAVE_SECURITY_ADMIN_URL: postgresql+psycopg://security_bootstrap:${SECURITY_TEST_PASSWORD}@security-db/isave_test_regression
+      ISAVE_SECURITY_RESTORE_URL: postgresql+psycopg://restore_bootstrap:${SECURITY_TEST_RESTORE_PASSWORD:?Private restore password required}@security-restore/postgres
+      INVITATION_DELIVERY: disabled
+      CAMPAIGN_DELIVERY_ENABLED: 'false'
+    depends_on:
+      security-db: {condition: service_healthy}
+      security-restore: {condition: service_healthy}
+    command: [python, -m, pytest, -q, --tb=short]
+  security-restore:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: restore_bootstrap
+      POSTGRES_PASSWORD: ${SECURITY_TEST_RESTORE_PASSWORD}
+      POSTGRES_DB: postgres
+    volumes: [security_restore_pg:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U restore_bootstrap -d postgres]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+volumes:
+  security_pg: {}
+  security_restore_pg: {}
+networks:
+  default:
+    ipam:
+      config: [{subnet: '${SECURITY_TEST_SUBNET:?Choose a verified unused isolated subnet}'}]
